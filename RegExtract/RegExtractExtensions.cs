@@ -8,7 +8,7 @@ namespace RegExtract
 {
     public static class RegExtractExtensions
     {
-        public static IEnumerable<Group> AsEnumerable(this GroupCollection gc)
+        private static IEnumerable<Group> AsEnumerable(this GroupCollection gc)
         {
             foreach (Group g in gc)
             {
