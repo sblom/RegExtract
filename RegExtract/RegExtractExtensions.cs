@@ -47,7 +47,7 @@ namespace RegExtract
             if (typeArgs.Count() <= 7)
             {
                 if (values.Count() != typeArgs.Count())
-                    throw new ArgumentException($"Length of {nameof(values)} doesn't match tuple type.");
+                    throw new ArgumentException($"Number of capture groups doesn't match tuple arity.");
 
                 return constructor.Invoke(values.Zip(typeArgs, StringToType).ToArray());
             }
@@ -59,10 +59,33 @@ namespace RegExtract
 
         public static T Extract<T>(this Match match)
         {
-            var type = typeof(T);
-            var typeArgs = type.GenericTypeArguments;
+            if (!match.Success)
+                throw new ArgumentException("Regex failed to match input.");
 
-            return (T)(CreateGenericTuple(type, match.Groups.AsEnumerable().Select(g => g.Value).Skip(1)));
+            var type = typeof(T);
+
+            if (type.FullName.StartsWith("System.ValueTuple`"))
+            {
+                var typeArgs = type.GenericTypeArguments;
+
+                return (T)(CreateGenericTuple(type, match.Groups.AsEnumerable().Select(g => g.Value).Skip(1)));
+            }
+            else
+            {
+                var constructors = type.GetConstructors().Where(cons => cons.GetParameters().Length != 0);
+
+                if (constructors is null || constructors.Count() > 1)
+                    throw new ArgumentException("Extraction type T must be either a ValueTuple or a type with a single public non-default constructor, such as a record.");
+
+                var constructor = constructors.Single();
+
+                var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
+
+                if (paramTypes.Count() != match.Groups.Count - 1)
+                    throw new ArgumentException($"Number of capture groups doesn't match constructor arity.");
+
+                return (T)constructor.Invoke(match.Groups.AsEnumerable().Select(g => g.Value).Skip(1).Zip(paramTypes, StringToType).ToArray());
+            }
         }
 
         public static T Extract<T>(this string str, string rx)

@@ -1,5 +1,5 @@
 <Query Kind="Statements">
-  <NuGetReference>RegExtract</NuGetReference>
+  <Reference Relative="..\..\RegExtract\bin\Debug\netstandard2.1\RegExtract.dll">C:\src\personal\RegExtract\RegExtract\bin\Debug\netstandard2.1\RegExtract.dll</Reference>
   <Namespace>RegExtract</Namespace>
 </Query>
 
@@ -25,3 +25,12 @@ types.Dump("Types other than string");
         
 nested.Dump("Nested parens in Regex");
 nested.uri.Dump("Individual item");
+
+// Instead of a tuple, you can use any type with a single non-default public constructor.
+// The most useful examples of this will probably be C# 9's record types.
+UrlRecord url = "https://nuget.org:443/packages/RegExtract"
+    .Extract<UrlRecord>(@"((\S+)://(\S+):(\d+)(\S*))");
+
+url.Dump("Record type");
+
+record UrlRecord(Uri uri, string protocol, string host, int port, string path);
