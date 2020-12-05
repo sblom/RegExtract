@@ -77,7 +77,7 @@ namespace RegExtract
 
                 var result = (T)defaultConstructor.Invoke(null);
 
-                foreach (var group in match.Groups.AsEnumerable().Where(g => !int.TryParse(g.Name, out var _)))
+                foreach (var group in match.Groups.AsEnumerable().Where(g => !int.TryParse(g.Name, out var _) && g.Success))
                 {
                     var property = type.GetProperty(group.Name);
 
