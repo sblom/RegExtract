@@ -22,15 +22,31 @@ types.Dump("Types other than string");
 (Uri uri, string protocol, string host, int port, string path) nested =
     "https://nuget.org:443/packages/RegExtract"
         .Extract<(Uri, string, string, int, string)>(@"((\S+)://(\S+):(\d+)(\S*))");
-        
+
 nested.Dump("Nested parens in Regex");
 nested.uri.Dump("Individual item");
 
 // Instead of a tuple, you can use any type with a single non-default public constructor.
 // The most useful examples of this will probably be C# 9's record types.
-UrlRecord url = "https://nuget.org:443/packages/RegExtract"
-    .Extract<UrlRecord>(@"((\S+)://(\S+):(\d+)(\S*))");
+UrlPositionalRecord urlPositional = "https://nuget.org:443/packages/RegExtract"
+    .Extract<UrlPositionalRecord>
+      (@"((\S+)://(\S+):(\d+)(\S*))");
 
-url.Dump("Record type");
+urlPositional.Dump("Record type (positional)");
 
-record UrlRecord(Uri uri, string protocol, string host, int port, string path);
+// Instead of a tuple, you can use any type with a single non-default public constructor.
+// The most useful examples of this will probably be C# 9's record types.
+UrlRecord urlProperties = "https://nuget.org:443/packages/RegExtract"
+      .Extract<UrlRecord>(@"(?<uri>(?<protocol>\S+)://(?<host>\S+):(?<port>\d+)(?<path>\S*))");
+
+urlProperties.Dump("Record type (properties)");
+
+record UrlPositionalRecord(Uri uri, string protocol, string host, int port, string path);
+
+record UrlRecord {
+    public Uri uri { get; init; }
+    public string protocol { get; init; }
+    public string host { get; init; }
+    public int port { get; init; }
+    public string path { get; init; }
+}
