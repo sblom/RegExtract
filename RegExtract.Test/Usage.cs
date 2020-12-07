@@ -4,6 +4,7 @@ using Xunit;
 
 using RegExtract;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
 
 namespace RegExtract.Test
 {
@@ -121,9 +122,9 @@ namespace RegExtract.Test
             public int a { get; init; }
             public char b { get; init; }
             public string c { get; init; }
-            public int d { get; init; }
-            public char e { get; init; }
-            public string f { get; init; }
+            public int? d { get; init; }
+            public char? e { get; init; }
+            public string? f { get; init; }
             public int g { get; init; }
             public char h { get; init; }
             public string i { get; init; }
@@ -137,9 +138,9 @@ namespace RegExtract.Test
 
         record Passport
         {
-            public int byr { get; set; }
-            public int iyr { get; set; }
-            public int eyr { get; set; }
+            public int? byr { get; set; }
+            public int? iyr { get; set; }
+            public int? eyr { get; set; }
             public string? hgt { get; set; }
             public string? hcl { get; set; }
             public string? ecl { get; set; }
@@ -165,6 +166,23 @@ $
 ", RegexOptions.IgnorePatternWhitespace);
 
             mondo.Match("hgt:61in iyr:2014 pid:916315544 hcl:#733820 ecl:oth").Extract<Passport>();
+        }
+
+        record Container
+        {
+            public string container { get; init; }
+            public List<int> count { get; init; }
+            public List<string> bag { get; init; }
+            public string? none { get; init; }
+        }
+
+        [Fact]
+        public void can_extract_capture_collections_to_lists()
+        {
+            var line = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
+            var regex = @"^(?<container>.+) bags contain( (?<none>no more bags\.)| (?<count>\d+) (?<bag>[^,.]*) bag[s]?[,.])+$";
+
+            var output = line.Extract<Container>(regex);
         }
     }
 }

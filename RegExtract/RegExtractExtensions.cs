@@ -16,8 +16,21 @@ namespace RegExtract
             }
         }
 
+        private static IEnumerable<Capture> AsEnumerable(this CaptureCollection cc)
+        {
+            foreach (Capture c in cc)
+            {
+                yield return c;
+            }
+        }
+
         private static object StringToType(string val, Type type)
         {
+            if (type.FullName.StartsWith("System.Nullable`1"))
+            {
+                type = type.GetGenericArguments().Single();
+            }
+
             var parse = type.GetMethod("Parse",
                                         BindingFlags.Static | BindingFlags.Public,
                                         null,
@@ -77,14 +90,33 @@ namespace RegExtract
 
                 var result = (T)defaultConstructor.Invoke(null);
 
-                foreach (var group in match.Groups.AsEnumerable().Where(g => !int.TryParse(g.Name, out var _) && g.Success))
+                foreach (var group in match.Groups.AsEnumerable().Where(g => !int.TryParse(g.Name, out var _) /* && g.Success */))
                 {
                     var property = type.GetProperty(group.Name);
 
                     if (property is null)
                         throw new ArgumentException($"Could not find property for named capture group '{group.Name}'.");
 
-                    property.GetSetMethod().Invoke(result, new object[] {StringToType(group.Value,property.PropertyType)});
+                    if (property.PropertyType.FullName.StartsWith("System.Collections.Generic.List`"))
+                    {
+                        var listType = property.PropertyType.GenericTypeArguments.Single();
+                        var list = group.Captures.AsEnumerable().Select(c => StringToType(c.Value,listType));
+
+                        MethodInfo CastMethod = typeof(Enumerable).GetMethod("Cast");
+                        MethodInfo ToListMethod = typeof(Enumerable).GetMethod("ToList");
+
+                        var castItems = CastMethod.MakeGenericMethod(new Type[] { listType })
+                                                  .Invoke(null, new object[] { list });
+                        var listout = ToListMethod.MakeGenericMethod(new Type[] { listType })
+                                                  .Invoke(null, new object[] { castItems });
+
+                        property.GetSetMethod().Invoke(result, new object[] {listout});
+                    }
+                    else
+                    {
+                        if (!group.Success) continue;
+                        property.GetSetMethod().Invoke(result, new object[] {StringToType(group.Value,property.PropertyType)});
+                    }
                 }
 
                 return result;
