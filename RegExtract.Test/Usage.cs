@@ -184,6 +184,16 @@ $
 
             var output = line.Extract<Container>(regex);
         }
+
+        [Fact]
+        public void can_extract_single_item()
+        {
+            var output = "asdf".Extract<string>("(.*)");
+            Assert.Equal("asdf", output);
+
+            var n = "2023".Extract<int>(@"(\d+)");
+            Assert.Equal(2023, n);
+        }
     }
 }
 
