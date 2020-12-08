@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0;netstandard2.1;net40</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Quick and dirty idiomatic C# RegEx-based line parser that emits typed ValueTuples</Description>
-    <Version>0.9.11</Version>
+    <Version>0.9.13</Version>
     <Authors>sblom</Authors>
     <Copyright>Copyright © 2020 Scott Blomquist</Copyright>
     <Company />
@@ -13,6 +13,12 @@
     <PackageTags>linqpad-samples</PackageTags>
     <LangVersion>Latest</LangVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>RegExtract.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\doc\linqpad-samples\**" Pack="True" PackagePath="linqpad-samples\">

@@ -227,6 +227,17 @@ $
         {
             var result = "Asynchronous,Encrypted".Extract<System.IO.FileOptions>(@".*");
         }
+
+        record WithTemplate(string op, int arg)
+        {
+            public const string REGEXTRACT_TEMPLATE = @"(\S+) ([+-]?\d+)";
+        }
+
+        [Fact]
+        public void can_extract_with_template()
+        {
+            var result = "acc +7".Extract<WithTemplate>();
+        }
     }
 }
 
