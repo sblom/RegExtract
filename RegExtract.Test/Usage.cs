@@ -222,6 +222,11 @@ $
             var result_named = "asdf".Extract<NamedAlternation>(@"(?<n>\d+)|(?<s>.*)");
         }
 
+        [Fact]
+        public void can_extract_enum()
+        {
+            var result = "Asynchronous,Encrypted".Extract<System.IO.FileOptions>(@".*");
+        }
     }
 }
 

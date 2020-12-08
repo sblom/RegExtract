@@ -83,6 +83,12 @@ namespace RegExtract
                 return constructor.Invoke(new[] { val });
             }
 
+            if (type.BaseType == typeof(Enum))
+            {
+                return typeof(Enum).GetMethods().Where(m => m.Name == "Parse" && m.IsGenericMethod && m.GetParameters().Count() == 1)
+                            .First().MakeGenericMethod(new[] { type }).Invoke(null, new[] { val });
+            }
+
             return val;
         }
 
