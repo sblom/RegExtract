@@ -194,6 +194,12 @@ $
             var n = "2023".Extract<int>(@"(\d+)");
             Assert.Equal(2023, n);
         }
+
+        [Fact]
+        public void can_extract_multimatch_to_tuple()
+        {
+            var result = "123 456 789".Extract <List<int>> (@"(?:(\d+) ?)+");
+        }
     }
 }
 

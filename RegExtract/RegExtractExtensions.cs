@@ -30,6 +30,33 @@ namespace RegExtract
             }
         }
 
+        private static object GroupToType(Group group, Type type)
+        {
+            if (type.FullName.StartsWith("System.Collections.Generic.List`"))
+            {
+                var listType = type.GetGenericArguments().Single();
+                var list = group.Captures.AsEnumerable().Select(c => StringToType(c.Value, listType));
+
+                MethodInfo CastMethod = typeof(Enumerable).GetMethod("Cast");
+                MethodInfo ToListMethod = typeof(Enumerable).GetMethod("ToList");
+
+                var castItems = CastMethod.MakeGenericMethod(new Type[] { listType })
+                                          .Invoke(null, new object[] { list });
+                var listout = ToListMethod.MakeGenericMethod(new Type[] { listType })
+                                          .Invoke(null, new object[] { castItems });
+
+                return listout;
+            }
+            else if (group.Success)
+            {
+                return StringToType(group.Value, type);
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         private static object StringToType(string val, Type type)
         {
             if (type.FullName.StartsWith("System.Nullable`1"))
@@ -58,21 +85,21 @@ namespace RegExtract
             return val;
         }
 
-        private static object CreateGenericTuple(Type tupleType, IEnumerable<string> values)
+        private static object CreateGenericTuple(Type tupleType, IEnumerable<Group> groups)
         {
             var typeArgs = (IEnumerable<Type>)tupleType.GetGenericArguments();
             var constructor = tupleType.GetConstructor(tupleType.GetGenericArguments());
 
             if (typeArgs.Count() <= 7)
             {
-                if (values.Count() != typeArgs.Count())
+                if (groups.Count() != typeArgs.Count())
                     throw new ArgumentException($"Number of capture groups doesn't match tuple arity.");
 
-                return constructor.Invoke(values.Zip(typeArgs, StringToType).ToArray());
+                return constructor.Invoke(groups.Zip(typeArgs, GroupToType).ToArray());
             }
             else
             {
-                return constructor.Invoke(values.Take(7).Zip(typeArgs, StringToType).Concat(new[] { CreateGenericTuple(typeArgs.Skip(7).Single(), values.Skip(7)) }).ToArray());
+                return constructor.Invoke(groups.Take(7).Zip(typeArgs, GroupToType).Concat(new[] { CreateGenericTuple(typeArgs.Skip(7).Single(), groups.Skip(7)) }).ToArray());
             }
         }
 
@@ -96,7 +123,7 @@ namespace RegExtract
 
             if (!hasNamedCaptures && numUnnamedCaptures == 0)
             {
-                return (T)StringToType(match.Groups[0].Value, type);
+                return (T)GroupToType(match.Groups[0], type);
             }
 
             // Try to find an appropriate constructor if we have unnamed captures.
@@ -106,7 +133,7 @@ namespace RegExtract
                 {
                     var typeArgs = type.GetGenericArguments();
 
-                    result = (T)(CreateGenericTuple(type, match.Groups.AsEnumerable().Skip(1).Take(numUnnamedCaptures).Select(g => g.Value)));
+                    result = (T)(CreateGenericTuple(type, match.Groups.AsEnumerable().Skip(1).Take(numUnnamedCaptures)));
                 }
                 else if (constructors?.Count() == 1)
                 {
@@ -121,7 +148,7 @@ namespace RegExtract
                 }
                 else if (numUnnamedCaptures == 1 && !hasNamedCaptures)
                 {
-                    return (T)StringToType(match.Groups[1].Value, type);
+                    return (T)GroupToType(match.Groups[1], type);
                 }
                 else if (!hasNamedCaptures)
                 {
@@ -152,26 +179,7 @@ namespace RegExtract
                     if (property is null)
                         throw new ArgumentException($"Could not find property for named capture group '{group.Name}'.");
 
-                    if (property.PropertyType.FullName.StartsWith("System.Collections.Generic.List`"))
-                    {
-                        var listType = property.PropertyType.GenericTypeArguments.Single();
-                        var list = group.Captures.AsEnumerable().Select(c => StringToType(c.Value,listType));
-
-                        MethodInfo CastMethod = typeof(Enumerable).GetMethod("Cast");
-                        MethodInfo ToListMethod = typeof(Enumerable).GetMethod("ToList");
-
-                        var castItems = CastMethod.MakeGenericMethod(new Type[] { listType })
-                                                  .Invoke(null, new object[] { list });
-                        var listout = ToListMethod.MakeGenericMethod(new Type[] { listType })
-                                                  .Invoke(null, new object[] { castItems });
-
-                        property.GetSetMethod().Invoke(result, new object[] {listout});
-                    }
-                    else
-                    {
-                        if (!group.Success) continue;
-                        property.GetSetMethod().Invoke(result, new object[] {StringToType(group.Value,property.PropertyType)});
-                    }
+                    property.GetSetMethod().Invoke(result, new object[] {GroupToType(group,property.PropertyType)});
                 }
             }
 #endif
