@@ -53,7 +53,8 @@ namespace RegExtract
             }
             else
             {
-                return null;
+                if (type.IsClass || Nullable.GetUnderlyingType(type) != null) return null;
+                else return Convert.ChangeType(null, type);
             }
         }
 
@@ -144,7 +145,7 @@ namespace RegExtract
                     if (paramTypes.Count() != match.Groups.Count - 1)
                         throw new ArgumentException($"Number of capture groups doesn't match constructor arity.");
 
-                    result = (T)constructor.Invoke(match.Groups.AsEnumerable().Skip(1).Take(numUnnamedCaptures).Select(g => g.Value).Zip(paramTypes, StringToType).ToArray());
+                    result = (T)constructor.Invoke(match.Groups.AsEnumerable().Skip(1).Take(numUnnamedCaptures).Zip(paramTypes, GroupToType).ToArray());
                 }
                 else if (numUnnamedCaptures == 1 && !hasNamedCaptures)
                 {

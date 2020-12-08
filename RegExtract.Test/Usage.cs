@@ -200,6 +200,28 @@ $
         {
             var result = "123 456 789".Extract <List<int>> (@"(?:(\d+) ?)+");
         }
+
+        [Fact]
+        public void can_extract_alternation_to_tuple()
+        {
+            var result = "asdf".Extract<(int?, string)>(@"(\d+)|(.*)");
+        }
+
+        record Alternation(int? n, string s);
+
+        record NamedAlternation
+        {
+            public int? n { get; init; }
+            public string s { get; init; }
+        }
+
+        [Fact]
+        public void can_extract_alternation_to_record()
+        {
+            var result = "asdf".Extract<Alternation>(@"(\d+)|(.*)");
+            var result_named = "asdf".Extract<NamedAlternation>(@"(?<n>\d+)|(?<s>.*)");
+        }
+
     }
 }
 
