@@ -2,16 +2,41 @@
 - [Table of Contents](#table-of-contents)
 - [RegExtract](#regextract)
   - [Usage Examples](#usage-examples)
+    - [Date from email header](#date-from-email-header)
+    - [List of words](#list-of-words)
+    - [Alternation](#alternation)
+    - [Parsing fields](#parsing-fields)
+    - [Enums and Flags](#enums-and-flags)
   - [History](#history)
 
 # RegExtract
 Quick and dirty idiomatic C# line parser that emits typed ValueTuples.
 
 ## Usage Examples
+### Date from email header
 ```csharp
-var date = "Date: Mon, 7 Dec 2020 19:43:24 -0800".Extract<DateTime>(@"Date: (.*)");
+DateTime date = "Date: Mon, 7 Dec 2020 19:43:24 -0800".Extract<DateTime>(@"Date: (.*)");
 ```
+### List of words
+```csharp
+List<string> words = "The quick brown fox jumped over the lazy dogs.".Extract<List<string>>(@"(?:(\w+)\W*)+");
+```
+### Alternation
+```csharp
+var (n,s) = "str".Extract<(int?,string)>(@"(\d+)|(.*)");
+```
+### Parsing fields
+```csharp
+var (n1,y1,e1) = "Hello, earthling, from 2077!".Extract<ParseResult>(@"Hello, (.*), from (?:(\d+)|(.*))!");
+var (n2,y2,e2) = "Hello, martian, from earth!".Extract<ParseResult>(@"Hello, (.*), from (?:(\d+)|(.*))!");
 
+record ParseResult(string name, int? year, string loc);
+```
+### Enums and Flags
+```csharp
+var mode = "OpenOrCreate".Extract<FileMode>(@".*");
+var flags = "Public,Static".Extract<BindingFlags>(".*");
+```
 ## History
 This project came about during [day 2 of Advent of Code 2020][1].
 The task involved parsing a strings that looked something like:
