@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>RegExtract.Tests</_Parameter1>
+      <_Parameter1>RegExtract.Test</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 

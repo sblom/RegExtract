@@ -30,7 +30,7 @@ namespace RegExtract
             }
         }
 
-        private static object GroupToType(Group group, Type type)
+        internal static object GroupToType(Group group, Type type)
         {
             if (type.FullName.StartsWith("System.Collections.Generic.List`"))
             {
@@ -58,7 +58,7 @@ namespace RegExtract
             }
         }
 
-        private static object StringToType(string val, Type type)
+        internal static object StringToType(string val, Type type)
         {
             if (type.FullName.StartsWith("System.Nullable`1"))
             {
@@ -92,7 +92,7 @@ namespace RegExtract
             return val;
         }
 
-        private static object CreateGenericTuple(Type tupleType, IEnumerable<Group> groups)
+        internal static object CreateGenericTuple(Type tupleType, IEnumerable<Group> groups)
         {
             var typeArgs = (IEnumerable<Type>)tupleType.GetGenericArguments();
             var constructor = tupleType.GetConstructor(tupleType.GetGenericArguments());

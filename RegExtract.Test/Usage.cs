@@ -238,6 +238,25 @@ $
         {
             var result = "acc +7".Extract<WithTemplate>();
         }
+
+        [Fact]
+        public void group_to_type_list_of_int()
+        {
+            var match = Regex.Match("123 456 789", @"(?:(\d+) ?)+");
+            RegExtractExtensions.GroupToType(match.Groups[1], typeof(List<int>));
+
+            match = Regex.Match("", @"(\d+)?");
+            RegExtractExtensions.GroupToType(match.Groups[1], typeof(int?));
+
+            Assert.Throws<InvalidCastException>(() => RegExtractExtensions.GroupToType(match.Groups[1], typeof(int)));
+        }
+
+        [Fact]
+        public void string_to_type_tests()
+        {
+            RegExtractExtensions.StringToType("123", typeof(int?));
+        }
+
     }
 }
 
