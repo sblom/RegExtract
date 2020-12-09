@@ -227,7 +227,7 @@ namespace RegExtract
         public static T Extract<T>(this string str, RegExtractOptions options = RegExtractOptions.None)
         {
             var field = typeof(T).GetField("REGEXTRACT_PATTERN", BindingFlags.Public | BindingFlags.Static);
-            if (field is not { IsLiteral: true, IsInitOnly: false }) throw new ArgumentException("No string, Regex, or Match provided, and extraction type doesn't have public const string REGEXTRACT_TEMPLATE.");
+            if (field is not { IsLiteral: true, IsInitOnly: false }) throw new ArgumentException("No string, Regex, or Match provided, and extraction type doesn't have public const string REGEXTRACT_PATTERN.");
             string rxPattern = (string)field.GetValue(null);
 
             RegexOptions rxOptions = RegexOptions.None;
