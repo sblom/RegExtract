@@ -5,9 +5,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Clean &amp; simple, idiomatic C# RegEx-based line parser
 
-RegExtract takes a string and a regular expression template and deserializes to a provided type.
-Works especially well with records and tuples, but can extract to any type that provides either
-a `static T Parse(string)` method or a single-string constructor (`T(string)`).
+RegExtract takes a string and a regular expression template and deserializes to a provided type. Works especially well with records and tuples, but can extract to any type that provides either a `static T Parse(string)` method or a single-string constructor (`T(string)`).
 
 See more docs at project page: https://github.com/sblom/RegExtract
 </Description>
