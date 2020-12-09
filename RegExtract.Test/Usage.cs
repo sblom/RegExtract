@@ -260,6 +260,17 @@ $
             RegExtractExtensions.StringToType("123", typeof(int?));
         }
 
+        [Fact]
+        public void can_extract_to_string_constructor()
+        {
+            "https://www.google.com/".Extract<Uri>(".*");
+        }
+
+        [Fact]
+        public void regex_does_not_match()
+        {
+            Assert.Throws<ArgumentException>(()=>"https://www.google.com/".Extract<Uri>(@"\d+"));
+        }
     }
 }
 
