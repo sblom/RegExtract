@@ -20,7 +20,7 @@ namespace RegExtract
 
             if (groups.All(g => g.name != null))
             {
-                hasNamedCaptures = 0 < groups.Where(g  => !int.TryParse(g.name, out var _)).Count();
+                hasNamedCaptures = groups.Any(g  => !int.TryParse(g.name, out var _));
                 numUnnamedCaptures = groups.Select((g, i) => (g, i)).Last(x => int.TryParse(x.g.name, out var n) && n == x.i).i;
             }
 
