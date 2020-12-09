@@ -110,7 +110,7 @@ namespace RegExtract
             }
         }
 
-        public static T Extract<T>(this Match match, RegExtractOptions options = RegExtractOptions.None)
+        public static T Extract<T>(this Match match, RegExtractOptions options = RegExtractOptions.None, string[] groupNames = null)
         {
             if (!match.Success)
                 throw new ArgumentException("Regex failed to match input.");
@@ -120,11 +120,19 @@ namespace RegExtract
             bool hasNamedCaptures = false;
             int numUnnamedCaptures = match.Groups.Count - 1;
 
-            // netstandard2.1 and up included named captures; prior to that, ALL captures were unnamed.
+            if (groupNames == null)
+            {
 #if !NETSTANDARD2_0 && !NET40
-            hasNamedCaptures = 0 < match.Groups.AsEnumerable().Where(g => g.Name is { Length: >0 } && !int.TryParse(g.Name, out var _)).Count();
-            numUnnamedCaptures = match.Groups.AsEnumerable().Select((g,i) => (group: g, index: i)).Last(x => int.TryParse(x.group.Name, out var n) && n == x.index).index;
+                groupNames = match.Groups.Select(g => g.Name).ToArray();
 #endif
+            }
+
+            if (groupNames != null)
+            {
+                hasNamedCaptures = 0 < groupNames.Where(gn => !int.TryParse(gn, out var _)).Count();
+                numUnnamedCaptures = groupNames.Select((gn,i) => (gn, i)).Last(x => int.TryParse(x.gn, out var n) && n == x.i).i;
+            }
+
             var type = typeof(T);
             var constructors = type.GetConstructors().Where(cons => cons.GetParameters().Length != 0);
 
@@ -163,7 +171,6 @@ namespace RegExtract
                 }
             }
 
-#if !NETSTANDARD2_0 && !NET40
             if (hasNamedCaptures)
             {
                 if (ReferenceEquals(result, default(T)) || Equals(result, default(T)))
@@ -179,17 +186,17 @@ namespace RegExtract
                     result = (T)defaultConstructor.Invoke(null);
                 }
 
-                foreach (var group in match.Groups.AsEnumerable().Where(g => !int.TryParse(g.Name, out var _) /* && g.Success */))
+                foreach (var group in groupNames.Where(gn => !int.TryParse(gn, out var _) /* && g.Success */))
                 {
-                    var property = type.GetProperty(group.Name);
+                    var property = type.GetProperty(group);
 
                     if (property is null)
-                        throw new ArgumentException($"Could not find property for named capture group '{group.Name}'.");
+                        throw new ArgumentException($"Could not find property for named capture group '{group}'.");
 
-                    property.GetSetMethod().Invoke(result, new object[] {GroupToType(group,property.PropertyType)});
+                    property.GetSetMethod().Invoke(result, new object[] {GroupToType(match.Groups[group],property.PropertyType)});
                 }
             }
-#endif
+
             return result;
         }
 
@@ -197,25 +204,44 @@ namespace RegExtract
         {
             var match = Regex.Match(str, rx);
 
-            return (T)(Extract<T>(match, options));
+            string[] groupNames = null;
+#if NETSTANDARD2_0 || NET40
+             groupNames = new Regex(rx).GetGroupNames();
+#endif
+
+            return (T)Extract<T>(match, options, groupNames);
         }
 
         public static T Extract<T>(this string str, Regex rx, RegExtractOptions options = RegExtractOptions.None)
         {
             var match = rx.Match(str);
 
-            return (T)(Extract<T>(match, options));
+            string[] groupNames = null;
+#if NETSTANDARD2_0 || NET40
+            groupNames = rx.GetGroupNames();
+#endif
+            
+            return (T)Extract<T>(match, options,groupNames);
         }
 
         public static T Extract<T>(this string str, RegExtractOptions options = RegExtractOptions.None)
         {
-            var field = typeof(T).GetField("REGEXTRACT_TEMPLATE", BindingFlags.Public | BindingFlags.Static);
+            var field = typeof(T).GetField("REGEXTRACT_PATTERN", BindingFlags.Public | BindingFlags.Static);
             if (field is not { IsLiteral: true, IsInitOnly: false }) throw new ArgumentException("No string, Regex, or Match provided, and extraction type doesn't have public const string REGEXTRACT_TEMPLATE.");
-            string rx = (string)field.GetValue(null);
+            string rxPattern = (string)field.GetValue(null);
 
-            var match = Regex.Match(str, rx);
+            RegexOptions rxOptions = RegexOptions.None;
+            field = typeof(T).GetField("REGEXTRACT_OPTIONS", BindingFlags.Public | BindingFlags.Static);
+            if (field is { IsLiteral: true, IsInitOnly: false }) rxOptions = (RegexOptions)field.GetValue(null);
 
-            return (T)(Extract<T>(match, options));
+            var match = Regex.Match(str, rxPattern, rxOptions);
+
+            string[] groupNames = null;
+#if NETSTANDARD2_0 || NET40
+            groupNames = new Regex(rxPattern, rxOptions).GetGroupNames();
+#endif
+
+            return (T)(Extract<T>(match, options, groupNames));
         }
     }
 }

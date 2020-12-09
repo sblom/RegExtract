@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0;netstandard2.1;net40</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Quick and dirty idiomatic C# RegEx-based line parser that emits typed ValueTuples</Description>
-    <Version>0.9.13</Version>
+    <Version>0.9.14</Version>
     <Authors>sblom</Authors>
     <Copyright>Copyright © 2020 Scott Blomquist</Copyright>
     <Company />
@@ -22,7 +22,7 @@
 
   <!-- SourceLink configuration -->
   <ItemGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <!-- SourceLink configuration -->
@@ -43,7 +43,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\doc\**"/>
+    <None Include="..\doc\**" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'NET40'">
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
 
 </Project>

@@ -230,7 +230,8 @@ $
 
         record WithTemplate(string op, int arg)
         {
-            public const string REGEXTRACT_TEMPLATE = @"(\S+) ([+-]?\d+)";
+            public const string REGEXTRACT_PATTERN = @"(\S+) ([+-]?\d+)";
+            public const RegexOptions REGEXTRACT_OPTIONS = RegexOptions.None;
         }
 
         [Fact]
@@ -238,6 +239,8 @@ $
         {
             var result = "acc +7".Extract<WithTemplate>();
         }
+
+        const RegexOptions opts = RegexOptions.IgnoreCase|RegexOptions.Multiline;
 
         [Fact]
         public void group_to_type_list_of_int()
