@@ -150,7 +150,7 @@ namespace RegExtract.Test
         [Fact]
         public void can_extract_mondo_conditional_regex()
         {
-            var mondo = new Regex(@"
+            var mondoString = @"
 ^(\b
 ( (byr: ((?<byr>19[2-9][0-9]|200[0-2])                           |.*?) )
 | (iyr: ((?<iyr>20(1[0-9]|20))                                   |.*?) )
@@ -163,9 +163,12 @@ namespace RegExtract.Test
 )
 \b\s*)+
 $
-", RegexOptions.IgnorePatternWhitespace);
+";
+            var mondo = new Regex(mondoString, RegexOptions.IgnorePatternWhitespace);
 
-            mondo.Match("hgt:61in iyr:2014 pid:916315544 hcl:#733820 ecl:oth").Extract<Passport>();
+            "hgt:61in iyr:2014 pid:916315544 hcl:#733820 ecl:oth".Extract<Passport>(mondoString,RegexOptions.IgnorePatternWhitespace);
+
+            //TODO: this was the only test using the `this Match` extension for Extract. Should re-add one.
         }
 
         record Container
@@ -230,8 +233,8 @@ $
 
         record WithTemplate(string op, int arg)
         {
-            public const string REGEXTRACT_PATTERN = @"(\S+) ([+-]?\d+)";
-            public const RegexOptions REGEXTRACT_OPTIONS = RegexOptions.None;
+            public const string REGEXTRACT_REGEX_PATTERN = @"(\S+) ([+-]?\d+)";
+            public const RegexOptions REGEXTRACT_REGEX_OPTIONS = RegexOptions.None;
         }
 
         [Fact]

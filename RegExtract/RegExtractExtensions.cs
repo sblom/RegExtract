@@ -105,7 +105,11 @@ namespace RegExtract
             }
             else
             {
-                return constructor.Invoke(groups.Take(7).Zip(typeArgs, GroupToType).Concat(new[] { CreateGenericTuple(typeArgs.Skip(7).Single(), groups.Skip(7)) }).ToArray());
+                return constructor.Invoke(
+                    groups.Take(7)
+                          .Zip(typeArgs, GroupToType)
+                          .Concat(new[] { CreateGenericTuple(typeArgs.Skip(7).Single(), groups.Skip(7)) })
+                          .ToArray());
             }
         }
 
@@ -133,7 +137,8 @@ namespace RegExtract
             }
 
             var type = typeof(T);
-            var constructors = type.GetConstructors().Where(cons => cons.GetParameters().Length != 0);
+            var constructors = type.GetConstructors()
+                                   .Where(cons => cons.GetParameters().Length != 0);
 
             if (!hasNamedCaptures && numUnnamedCaptures == 0)
             {
@@ -177,7 +182,9 @@ namespace RegExtract
                     if (options.HasFlag(RegExtractOptions.Strict))
                         throw new ArgumentException("No constructor could be found that matched the number of unnamed capture groups. Because options includes Strict option we can't fall back to a default constructor and ignore unnamed captures.");
 
-                    var defaultConstructor = type.GetConstructors().Where(cons => cons.GetParameters().Length == 0).SingleOrDefault();
+                    var defaultConstructor = type.GetConstructors()
+                                                 .Where(cons => cons.GetParameters().Length == 0)
+                                                 .SingleOrDefault();
                     if (defaultConstructor is null)
                     {
                         throw new ArgumentException("When using named capture groups, extraction type T must have a public default constructor and a public (possibly init-only) setter for each capture name. Record types work well for this.");
@@ -201,14 +208,19 @@ namespace RegExtract
 
         public static T Extract<T>(this string str, string rx, RegExtractOptions options = RegExtractOptions.None)
         {
-            var match = Regex.Match(str, rx);
+            return Extract<T>(str, rx, RegexOptions.None, options);
+        }
+
+        public static T Extract<T>(this string str, string rx, RegexOptions rxOptions, RegExtractOptions options = RegExtractOptions.None)
+        {
+            var match = Regex.Match(str, rx, rxOptions);
 
             string[] groupNames = null;
 #if NETSTANDARD2_0 || NET40
              groupNames = new Regex(rx).GetGroupNames();
 #endif
 
-            return (T)Extract<T>(match, options, groupNames);
+            return Extract<T>(match, options, groupNames);
         }
 
         public static T Extract<T>(this string str, Regex rx, RegExtractOptions options = RegExtractOptions.None)
@@ -220,13 +232,14 @@ namespace RegExtract
             groupNames = rx.GetGroupNames();
 #endif
             
-            return (T)Extract<T>(match, options,groupNames);
+            return Extract<T>(match, options,groupNames);
         }
 
         public static T Extract<T>(this string str, RegExtractOptions options = RegExtractOptions.None)
         {
             var field = typeof(T).GetField("REGEXTRACT_REGEX_PATTERN", BindingFlags.Public | BindingFlags.Static);
-            if (field is not { IsLiteral: true, IsInitOnly: false }) throw new ArgumentException("No string, Regex, or Match provided, and extraction type doesn't have public const string REGEXTRACT_REGEX_PATTERN.");
+            if (field is not { IsLiteral: true, IsInitOnly: false })
+                throw new ArgumentException("No string, Regex, or Match provided, and extraction type doesn't have public const string REGEXTRACT_REGEX_PATTERN.");
             string rxPattern = (string)field.GetValue(null);
 
             RegexOptions rxOptions = RegexOptions.None;
@@ -240,7 +253,7 @@ namespace RegExtract
             groupNames = new Regex(rxPattern, rxOptions).GetGroupNames();
 #endif
 
-            return (T)(Extract<T>(match, options, groupNames));
+            return Extract<T>(match, options, groupNames);
         }
     }
 }
