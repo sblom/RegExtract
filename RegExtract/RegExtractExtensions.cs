@@ -129,7 +129,7 @@ namespace RegExtract
 
             if (groupNames != null)
             {
-                hasNamedCaptures = 0 < groupNames.Where(gn => !int.TryParse(gn, out var _)).Count();
+                hasNamedCaptures = groupNames.Where(gn => !int.TryParse(gn, out var _)).Any();
                 numUnnamedCaptures = groupNames.Select((gn,i) => (gn, i)).Last(x => int.TryParse(x.gn, out var n) && n == x.i).i;
             }
 
