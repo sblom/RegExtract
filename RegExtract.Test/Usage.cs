@@ -84,9 +84,11 @@ namespace RegExtract.Test
         [Fact]
         public void can_extract_to_positional_record()
         {
-            PositionalRecord record = data.Extract<PositionalRecord>(pattern);
+            PositionalRecord? record = data.Extract<PositionalRecord>(pattern);
 
-            var (a, b, c, d, e, f, g, h, i) = record;
+            Assert.NotNull(record);
+
+            var (a, b, c, d, e, f, g, h, i) = record!;
 
             Assert.IsType<int>(a);
             Assert.IsType<char>(b);
@@ -117,23 +119,23 @@ namespace RegExtract.Test
 
         record PropertiesRecord
         {
-            public string s { get; init; }
-            public long n { get; init; }
-            public int a { get; init; }
-            public char b { get; init; }
-            public string c { get; init; }
+            public string? s { get; init; }
+            public long? n { get; init; }
+            public int? a { get; init; }
+            public char? b { get; init; }
+            public string? c { get; init; }
             public int? d { get; init; }
             public char? e { get; init; }
             public string? f { get; init; }
-            public int g { get; init; }
-            public char h { get; init; }
-            public string i { get; init; }
+            public int? g { get; init; }
+            public char? h { get; init; }
+            public string? i { get; init; }
         }
 
         [Fact]
         public void can_extract_named_capture_groups_to_properties()
         {
-            PropertiesRecord record = data.Extract<PropertiesRecord>(pattern_named);
+            PropertiesRecord? record = data.Extract<PropertiesRecord>(pattern_named);
         }
 
         record Passport
@@ -173,9 +175,9 @@ $
 
         record Container
         {
-            public string container { get; init; }
-            public List<int> count { get; init; }
-            public List<string> bag { get; init; }
+            public string? container { get; init; }
+            public List<int?>? count { get; init; }
+            public List<string?>? bag { get; init; }
             public string? none { get; init; }
         }
 
@@ -215,7 +217,7 @@ $
         record NamedAlternation
         {
             public int? n { get; init; }
-            public string s { get; init; }
+            public string? s { get; init; }
         }
 
         [Fact]
@@ -249,18 +251,18 @@ $
         public void group_to_type_list_of_int()
         {
             var match = Regex.Match("123 456 789", @"(?:(\d+) ?)+");
-            RegExtractExtensions.GroupToType(match.Groups[1], typeof(List<int>));
+            MatchBinder.GroupToType(match.Groups[1], typeof(List<int>));
 
             match = Regex.Match("", @"(\d+)?");
-            RegExtractExtensions.GroupToType(match.Groups[1], typeof(int?));
+            MatchBinder.GroupToType(match.Groups[1], typeof(int?));
 
-            Assert.Throws<InvalidCastException>(() => RegExtractExtensions.GroupToType(match.Groups[1], typeof(int)));
+            Assert.Throws<InvalidCastException>(() => MatchBinder.GroupToType(match.Groups[1], typeof(int)));
         }
 
         [Fact]
         public void string_to_type_tests()
         {
-            RegExtractExtensions.StringToType("123", typeof(int?));
+            MatchBinder.StringToType("123", typeof(int?));
         }
 
         [Fact]
