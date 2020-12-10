@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 using Xunit;
 
@@ -251,18 +252,18 @@ $
         public void group_to_type_list_of_int()
         {
             var match = Regex.Match("123 456 789", @"(?:(\d+) ?)+");
-            MatchBinder.GroupToType(match.Groups[1], typeof(List<int>));
+            ExtractionBinder.GroupToType(match.Groups[1], typeof(List<int>));
 
             match = Regex.Match("", @"(\d+)?");
-            MatchBinder.GroupToType(match.Groups[1], typeof(int?));
+            ExtractionBinder.GroupToType(match.Groups[1], typeof(int?));
 
-            Assert.Throws<InvalidCastException>(() => MatchBinder.GroupToType(match.Groups[1], typeof(int)));
+            Assert.Throws<InvalidCastException>(() => ExtractionBinder.GroupToType(match.Groups[1], typeof(int)));
         }
 
         [Fact]
         public void string_to_type_tests()
         {
-            MatchBinder.StringToType("123", typeof(int?));
+            ExtractionBinder.StringToType("123", typeof(int?));
         }
 
         [Fact]
@@ -275,6 +276,68 @@ $
         public void regex_does_not_match()
         {
             Assert.Throws<ArgumentException>(()=>"https://www.google.com/".Extract<Uri>(@"\d+"));
+        }
+
+        record bounds(int lo, int hi);
+
+        [Fact]
+        public void nested_extraction()
+        {
+            var result = "2-12 c: abcdefg".Extract<(bounds, char, string)>(@"((\d+)-(\d+)) (.): (.*)", RegExtractOptions.Nested);
+        }
+
+        [Fact]
+        public void nested_extraction_of_list()
+        {
+            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<string>>(@"(?:(\w+)\W?)+", RegExtractOptions.Nested);
+        }
+
+        [Fact]
+        public void nested_extraction_of_bags()
+        {
+            var line = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
+            var regex = @"^(?<container>.+) bags contain(?: (?<none>no more bags\.)| (?<count>\d+) (?<bag>[^,.]*) bag[s]?[,.])+$";
+
+            var output = line.Extract<(string,string,List<int>,List<string>)>(regex,RegExtractOptions.Nested);
+        }
+
+        [Fact]
+        public void extraction_plan()
+        {
+            var groupNames = new Regex(@"((\d+)-(\d+)) (.): (.*)").GetGroupNames();
+            var match = Regex.Match("2-12 c: abcdefg", @"((\d+)-(\d+)) (.): (.*)");
+            var plan = ExtractionBinder.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof(((int, int), char, string)));
+            ((int,int),char,string) result = (((int, int), char, string))plan.Execute();
+        }
+
+        [Fact]
+        public void extraction_plan_to_long_tuple()
+        {
+            var groupNames = new Regex(pattern).GetGroupNames();
+            var match = Regex.Match(data, pattern);
+            var plan = ExtractionBinder.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof((int, char, string, int, char, string, int, char, string)));
+
+            var (a, b, c, d, e, f, g, h, i) = ((int, char, string, int, char, string, int, char, string))plan.Execute();
+
+            Assert.IsType<int>(a);
+            Assert.IsType<char>(b);
+            Assert.IsType<string>(c);
+            Assert.IsType<int>(d);
+            Assert.IsType<char>(e);
+            Assert.IsType<string>(f);
+            Assert.IsType<int>(g);
+            Assert.IsType<char>(h);
+            Assert.IsType<string>(i);
+
+            Assert.Equal(1, a);
+            Assert.Equal('2', b);
+            Assert.Equal("3", c);
+            Assert.Equal(4, d);
+            Assert.Equal('5', e);
+            Assert.Equal("6", f);
+            Assert.Equal(7, g);
+            Assert.Equal('8', h);
+            Assert.Equal("9", i);
         }
     }
 }

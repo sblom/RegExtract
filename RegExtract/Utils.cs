@@ -25,6 +25,19 @@ namespace RegExtract
             }
         }
 
+        internal static Type[] GetGenericArgumentsFlat(Type type)
+        {
+            var typeArgs = type.GetGenericArguments();
+
+            if (type.FullName.StartsWith("System.ValueTuple`") && typeArgs.Length == 8)
+            {
+                return typeArgs.Take(7).Concat(GetGenericArgumentsFlat(typeArgs[7])).ToArray();
+            }
+            else
+            {
+                return typeArgs;
+            }
+        }
     }
 }
 

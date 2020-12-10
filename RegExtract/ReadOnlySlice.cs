@@ -13,6 +13,12 @@ namespace RegExtract
         int _start;
         int _length;
 
+        internal static ReadOnlySlice<T> Slice(ReadOnlySlice<T> source, int start, int length)
+        {
+            return new ReadOnlySlice<T>(source, start, length);
+        }
+
+
         internal ReadOnlySlice(T[] storage)
         {
             _storage = storage;
@@ -28,7 +34,7 @@ namespace RegExtract
             Debug.Assert(length <= source._length - start);
         }
 
-        public T this[int i] => _storage[i + _start];
+        public T this[int i] => i < _length ? _storage[i + _start] : throw new IndexOutOfRangeException();
 
         public int Count => _length;
 
