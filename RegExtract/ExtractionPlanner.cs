@@ -257,15 +257,15 @@ namespace RegExtract
                     }
                     else
                     {
+                        var innerType = type.FullName.StartsWith(NULLABLE_TYPENAME) ? Nullable.GetUnderlyingType(type) : type;
+
                         var lastRange = ranges.Last();
                         var constructors = type.GetConstructors()
                                .Where(cons => cons.GetParameters().Length != 0);
 
-                        Type? innerType = isList ? type.GetGenericArguments().Single() : null;
-
-                        if (type.FullName.StartsWith("System.ValueTuple`"))
+                        if (innerType.FullName.StartsWith(VALUETUPLE_TYPENAME))
                         {
-                            return CreateGenericTuple(type, items.Select(i => i.Execute(lastRange.Index, lastRange.Length)));
+                            return CreateGenericTuple(innerType, items.Select(i => i.Execute(lastRange.Index, lastRange.Length)));
                         }
                         else if (constructors?.Count() == 1)
                         {
@@ -280,7 +280,7 @@ namespace RegExtract
                         }
                         else
                         {
-                            return StringToType(lastRange.Value, type);
+                            return StringToType(lastRange.Value, innerType);
                         }
                     }
                 }
