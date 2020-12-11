@@ -339,6 +339,14 @@ $
             Assert.Equal('8', h);
             Assert.Equal("9", i);
         }
+        
+        [Fact]
+        public void debug()
+        {
+#if !NETSTANDARD2_0 && !NET452 && DEBUG
+            "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.".ShowExtractionPlan<(string, string, List<(int, string)>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
+#endif
+        }
     }
 }
 

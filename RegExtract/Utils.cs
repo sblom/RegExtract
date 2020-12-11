@@ -9,6 +9,10 @@ namespace RegExtract
 {
     internal static class Utils
     {
+        internal const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
+        internal const string LIST_TYPENAME = "System.Collections.Generic.List`";
+        internal const string NULLABLE_TYPENAME = "System.Nullable`";
+
         internal static IEnumerable<Group> AsEnumerable(this GroupCollection gc)
         {
             foreach (Group g in gc)
@@ -29,7 +33,7 @@ namespace RegExtract
         {
             var typeArgs = type.GetGenericArguments();
 
-            if (type.FullName.StartsWith("System.ValueTuple`") && typeArgs.Length == 8)
+            if (type.FullName.StartsWith(VALUETUPLE_TYPENAME) && typeArgs.Length == 8)
             {
                 return typeArgs.Take(7).Concat(GetGenericArgumentsFlat(typeArgs[7])).ToArray();
             }

@@ -5,6 +5,8 @@ using System.Text.RegularExpressions;
 using System.Reflection;
 using System.Diagnostics;
 
+using static RegExtract.Utils;
+
 namespace RegExtract
 {
     internal static class ExtractionPlanner
@@ -96,12 +98,25 @@ namespace RegExtract
             return result;
         }
 
-        internal static int ArityOfType(Type type)
+        internal static int ArityOfType(Type type, bool recursive = false)
         {
             ConstructorInfo[] constructors;
-            if (type.FullName.StartsWith("System.Collections.Generic.List`") || type.FullName.StartsWith("System.Nullable`"))
+
+            if (type.FullName.StartsWith("System.Nullable`"))
             {
                 return ArityOfType(type.GetGenericArguments().Single());
+            }
+            else if (type.FullName.StartsWith("System.Collections.Generic.List`"))
+            {
+                var subtype = type.GetGenericArguments().Single();
+                if (subtype.FullName.StartsWith("System.Collections.Generic.List`"))
+                {
+                    return 1 + ArityOfType(subtype);
+                }
+                else
+                {
+                    return ArityOfType(subtype);
+                }
             }
             else if (type.FullName.StartsWith("System.ValueTuple`"))
             {
@@ -133,29 +148,37 @@ namespace RegExtract
 
         internal static ExtractionPlan CreateExtractionPlan(IEnumerable<Group> groups, IEnumerable<string?> groupNames, Type type)
         {
-            // Handle the special case of a unary type at the top level.
-            if (ArityOfType(type) == 1)
+            var arity = ArityOfType(type);
+
+            // Handle the special case of no capture groups; better be a unary type.
+            if (groups.Count() == 1)
             {
-                if (groups.Count() == 2)
-                {
-                    return new ExtractionPlan(type, groups.Skip(1).First(), groupNames.Skip(1).First(), new ExtractionPlan[0]);
-                }
-                else if (groups.Count() == 1)
-                {
+                if (ArityOfType(type) == 1)
                     return new ExtractionPlan(type, groups.First(), groupNames.First(), new ExtractionPlan[0]);
-                }
+                else
+                    throw new ArgumentException("With no capture groups, extraction type cannot be a compound type such as a tuple or a record.");
             }
 
-            return CreateExtractionPlan(
-                new ReadOnlySlice<(Group, string?)>(groups.Zip(groupNames, (group, name) => (group, name)).ToArray()), type);
+            var groupsArray = groups.Zip(groupNames, (group, name) => (group, name)).ToArray();
+            var groupsSlice = new ReadOnlySlice<(Group, string?)>(groupsArray);
+
+            if (arity == 1 || type.FullName.StartsWith(LIST_TYPENAME))
+            {
+                var groupsSubSlice = ReadOnlySlice<(Group, string?)>.Slice(groupsSlice, 1, groupsArray.Length - 1);
+
+                return new ExtractionPlanRootQuasiTuple(type, groups.First(), groupNames.First(),
+                    new[] { CreateExtractionPlan(groupsSubSlice, type) });
+            }
+
+            return CreateExtractionPlan(groupsSlice, type);
         }
 
-        internal static ExtractionPlan CreateExtractionPlan(ReadOnlySlice<(Group group, string? name)> groups, Type type, bool parentIsList = false)
+        private static ExtractionPlan CreateExtractionPlan(ReadOnlySlice<(Group group, string? name)> groups, Type type)
         {
             int arity = ArityOfType(type);
-            bool isList = type.FullName.StartsWith("System.Collections.Generic.List`");
-            bool isNullable = type.FullName.StartsWith("System.Nullable`");
-            bool isTuple = type.FullName.StartsWith("System.ValueTuple`");
+            bool isList = type.FullName.StartsWith(LIST_TYPENAME);
+            bool isNullable = type.FullName.StartsWith(NULLABLE_TYPENAME);
+            bool isTuple = type.FullName.StartsWith(VALUETUPLE_TYPENAME);
 
             Debug.Assert(groups[0].group.Index + groups[0].group.Length >= groups[arity - 1].group.Index + groups[arity - 1].group.Length);
 
@@ -180,6 +203,15 @@ namespace RegExtract
             {
                 typeArgs = constructors.Single().GetParameters().Select(p => p.ParameterType).ToArray();
             }
+            else if (isList)
+            {
+                var listType = type.GetGenericArguments().Single();
+
+                if (!listType.FullName.StartsWith(LIST_TYPENAME))
+                    start = 0;
+
+                typeArgs = type.GetGenericArguments();
+            }
 
             foreach (Type slotType in typeArgs)
             {
@@ -192,6 +224,15 @@ namespace RegExtract
             return new ExtractionPlan(type, groups[0].group, groups[0].name, slots.Select(slot => CreateExtractionPlan(new ReadOnlySlice<(Group group, string? name)>(groups, slot.Item2.start, slot.Item2.length), slot.type)).ToArray());
         }
 
+        internal record ExtractionPlanRootQuasiTuple(Type type, Group group, string? name, ExtractionPlan[] items):
+                ExtractionPlan(type, group, name, items)
+        {
+            internal override object? Execute(int captureStart, int captureLength)
+            {
+                return items[0].Execute(captureStart, captureLength);
+            }
+        }
+        
         internal record ExtractionPlan(Type type, Group group, string? name, ExtractionPlan[] items)
         {
             internal object? Execute()
@@ -199,18 +240,30 @@ namespace RegExtract
                 return Execute(group.Index, group.Length);
             }
 
-            private object? Execute(int captureStart, int captureLength)
+            internal virtual object? Execute(int captureStart, int captureLength)
             {
+                var ranges = group.Captures.AsEnumerable()
+                                  .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
+                                  .Select(cap => (cap.Value, cap.Index, cap.Length));
+
+                bool isList = type.FullName.StartsWith(LIST_TYPENAME);
+
+                if (!isList)
+                {
+                    if (!ranges.Any())
+                    {
+                        if (type.IsClass || Nullable.GetUnderlyingType(type) != null) return null;
+                        else return Convert.ChangeType(null, type);
+                    }
+                }
+
                 var constructors = type.GetConstructors()
                        .Where(cons => cons.GetParameters().Length != 0);
 
-                bool isList = type.FullName.StartsWith("System.Collections.Generic.List`");
                 Type? innerType = isList ? type.GetGenericArguments().Single() : null;
 
                 if (type.FullName.StartsWith("System.ValueTuple`"))
                 {
-                    var typeArgs = type.GetGenericArguments();
-
                     return CreateGenericTuple(type, items.Select(i => i.Execute()));
                 }
                 else if (constructors?.Count() == 1)
