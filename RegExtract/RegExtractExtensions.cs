@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-using static RegExtract.ExtractionBinder;
+using static RegExtract.ExtractionPlanner;
 
 namespace RegExtract
 {
@@ -17,14 +17,14 @@ namespace RegExtract
 
     public static class RegExtractExtensions
     {
-        public static T? Extract<T>(this Match match, RegExtractOptions options = RegExtractOptions.None, string[]? groupNames = null)
+        public static T? Extract<T>(this Match match, RegExtractOptions options = RegExtractOptions.None, string?[]? groupNames = null)
         {
             if (!match.Success)
                 throw new ArgumentException("Regex failed to match input.");
 
             if (groupNames == null)
             {
-                groupNames = new string[0];
+                groupNames = new string?[match.Groups.Count];
 #if !NETSTANDARD2_0 && !NET40
                 groupNames = match.Groups.Select(g => g.Name).ToArray();
 #endif
@@ -36,7 +36,7 @@ namespace RegExtract
                 return (T)plan.Execute();
             }
             else
-                return ExtractionBinder.Extract<T>(match.Groups.AsEnumerable().Zip(groupNames ?? Enumerable.Repeat<string?>(null, int.MaxValue), (group,name) => (group,name)), options);
+                return ExtractionPlanner.Extract<T>(match.Groups.AsEnumerable().Zip(groupNames ?? Enumerable.Repeat<string?>(null, int.MaxValue), (group,name) => (group,name)), options);
         }
 
         public static T? Extract<T>(this string str, string rx, RegExtractOptions options = RegExtractOptions.None)

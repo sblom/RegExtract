@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.0;netstandard2.1;net40</TargetFrameworks>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Description>Clean &amp; simple, idiomatic C# RegEx-based line parser
+    <Description>Clean &amp; simple, idiomatic C# RegEx-based line parser.
 
 RegExtract takes a string and a regular expression template and deserializes to a provided type. Works especially well with records and tuples, but can extract to any type that provides either a `static T Parse(string)` method or a single-string constructor (`T(string)`).
 
@@ -40,6 +40,12 @@ See more docs at project page: https://github.com/sblom/RegExtract
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>RegExtract.Test</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>LINQPadQuery</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 

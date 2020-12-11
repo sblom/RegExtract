@@ -252,18 +252,18 @@ $
         public void group_to_type_list_of_int()
         {
             var match = Regex.Match("123 456 789", @"(?:(\d+) ?)+");
-            ExtractionBinder.GroupToType(match.Groups[1], typeof(List<int>));
+            ExtractionPlanner.GroupToType(match.Groups[1], typeof(List<int>));
 
             match = Regex.Match("", @"(\d+)?");
-            ExtractionBinder.GroupToType(match.Groups[1], typeof(int?));
+            ExtractionPlanner.GroupToType(match.Groups[1], typeof(int?));
 
-            Assert.Throws<InvalidCastException>(() => ExtractionBinder.GroupToType(match.Groups[1], typeof(int)));
+            Assert.Throws<InvalidCastException>(() => ExtractionPlanner.GroupToType(match.Groups[1], typeof(int)));
         }
 
         [Fact]
         public void string_to_type_tests()
         {
-            ExtractionBinder.StringToType("123", typeof(int?));
+            ExtractionPlanner.StringToType("123", typeof(int?));
         }
 
         [Fact]
@@ -306,8 +306,8 @@ $
         {
             var groupNames = new Regex(@"((\d+)-(\d+)) (.): (.*)").GetGroupNames();
             var match = Regex.Match("2-12 c: abcdefg", @"((\d+)-(\d+)) (.): (.*)");
-            var plan = ExtractionBinder.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof(((int, int), char, string)));
-            ((int,int),char,string) result = (((int, int), char, string))plan.Execute();
+            var plan = ExtractionPlanner.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof(((int, int), char, string)));
+            ((int,int),char,string) result = (((int, int), char, string))plan.Execute()!;
         }
 
         [Fact]
@@ -315,9 +315,9 @@ $
         {
             var groupNames = new Regex(pattern).GetGroupNames();
             var match = Regex.Match(data, pattern);
-            var plan = ExtractionBinder.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof((int, char, string, int, char, string, int, char, string)));
+            var plan = ExtractionPlanner.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof((int, char, string, int, char, string, int, char, string)));
 
-            var (a, b, c, d, e, f, g, h, i) = ((int, char, string, int, char, string, int, char, string))plan.Execute();
+            var (a, b, c, d, e, f, g, h, i) = ((int, char, string, int, char, string, int, char, string))plan.Execute()!;
 
             Assert.IsType<int>(a);
             Assert.IsType<char>(b);

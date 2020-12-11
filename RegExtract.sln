@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30711.63
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegExtract", "RegExtract\RegExtract.csproj", "{7F764AB9-4BEA-4128-B1DA-17B51166715D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegExtract.Test", "RegExtract.Test\RegExtract.Test.csproj", "{836F68E6-27F6-417F-B216-3B48BBE34862}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegExtract.Test", "RegExtract.Test\RegExtract.Test.csproj", "{836F68E6-27F6-417F-B216-3B48BBE34862}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

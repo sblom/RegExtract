@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace RegExtract
 {
-    internal static class ExtractionBinder
+    internal static class ExtractionPlanner
 
     {
         internal static T? Extract<T>(IEnumerable<(Group group, string? name)> groups, RegExtractOptions options = RegExtractOptions.None)
@@ -121,7 +121,17 @@ namespace RegExtract
             }
         }
 
-        internal static ExtractionPlan CreateExtractionPlan(IEnumerable<Group> groups, IEnumerable<string> groupNames, Type type)
+
+#if !NETSTANDARD2_0 && !NET40 && DEBUG
+        internal static ExtractionPlan ShowExtractionPlan<T>(this string input, string pattern, RegexOptions regexOptions = RegexOptions.None)
+        {
+            var match = Regex.Match(input, pattern, regexOptions);
+            IEnumerable<Group> groupsEnumerable = match.Groups.AsEnumerable();
+            return CreateExtractionPlan(groupsEnumerable, groupsEnumerable.Select(g => g.Name), typeof(T));
+        }
+#endif
+
+        internal static ExtractionPlan CreateExtractionPlan(IEnumerable<Group> groups, IEnumerable<string?> groupNames, Type type)
         {
             // Handle the special case of a unary type at the top level.
             if (ArityOfType(type) == 1)
@@ -137,10 +147,10 @@ namespace RegExtract
             }
 
             return CreateExtractionPlan(
-                new ReadOnlySlice<(Group, string)>(groups.Zip(groupNames, (group, name) => (group, name)).ToArray()), type);
+                new ReadOnlySlice<(Group, string?)>(groups.Zip(groupNames, (group, name) => (group, name)).ToArray()), type);
         }
 
-        internal static ExtractionPlan CreateExtractionPlan(ReadOnlySlice<(Group group, string name)> groups, Type type, bool parentIsList = false)
+        internal static ExtractionPlan CreateExtractionPlan(ReadOnlySlice<(Group group, string? name)> groups, Type type, bool parentIsList = false)
         {
             int arity = ArityOfType(type);
             bool isList = type.FullName.StartsWith("System.Collections.Generic.List`");
@@ -158,7 +168,7 @@ namespace RegExtract
 
             int start = 1;
 
-            Type[] typeArgs = null;
+            Type[] typeArgs = new Type[0];
 
             IEnumerable<ConstructorInfo> constructors;
 
@@ -179,15 +189,23 @@ namespace RegExtract
                 if (start > groups.Count()) break;
             }
 
-            return new ExtractionPlan(type, groups[0].group, groups[0].name, slots.Select(slot => CreateExtractionPlan(new ReadOnlySlice<(Group group, string name)>(groups, slot.Item2.start, slot.Item2.length), slot.type)).ToArray());
+            return new ExtractionPlan(type, groups[0].group, groups[0].name, slots.Select(slot => CreateExtractionPlan(new ReadOnlySlice<(Group group, string? name)>(groups, slot.Item2.start, slot.Item2.length), slot.type)).ToArray());
         }
 
         internal record ExtractionPlan(Type type, Group group, string? name, ExtractionPlan[] items)
         {
             internal object? Execute()
             {
+                return Execute(group.Index, group.Length);
+            }
+
+            private object? Execute(int captureStart, int captureLength)
+            {
                 var constructors = type.GetConstructors()
                        .Where(cons => cons.GetParameters().Length != 0);
+
+                bool isList = type.FullName.StartsWith("System.Collections.Generic.List`");
+                Type? innerType = isList ? type.GetGenericArguments().Single() : null;
 
                 if (type.FullName.StartsWith("System.ValueTuple`"))
                 {
@@ -274,7 +292,7 @@ namespace RegExtract
             return val;
         }
 
-        internal static object CreateGenericTuple(Type tupleType, IEnumerable<object> vals)
+        internal static object CreateGenericTuple(Type tupleType, IEnumerable<object?> vals)
         {
             var typeArgs = tupleType.GetGenericArguments();
             var constructor = tupleType.GetConstructor(tupleType.GetGenericArguments());
