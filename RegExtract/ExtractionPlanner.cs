@@ -255,31 +255,51 @@ namespace RegExtract
                         if (type.IsClass || Nullable.GetUnderlyingType(type) != null) return null;
                         else return Convert.ChangeType(null, type);
                     }
-                }
+                    else
+                    {
+                        var lastRange = ranges.Last();
+                        var constructors = type.GetConstructors()
+                               .Where(cons => cons.GetParameters().Length != 0);
 
-                var constructors = type.GetConstructors()
-                       .Where(cons => cons.GetParameters().Length != 0);
+                        Type? innerType = isList ? type.GetGenericArguments().Single() : null;
 
-                Type? innerType = isList ? type.GetGenericArguments().Single() : null;
+                        if (type.FullName.StartsWith("System.ValueTuple`"))
+                        {
+                            return CreateGenericTuple(type, items.Select(i => i.Execute(lastRange.Index, lastRange.Length)));
+                        }
+                        else if (constructors?.Count() == 1)
+                        {
+                            var constructor = constructors.Single();
 
-                if (type.FullName.StartsWith("System.ValueTuple`"))
-                {
-                    return CreateGenericTuple(type, items.Select(i => i.Execute()));
-                }
-                else if (constructors?.Count() == 1)
-                {
-                    var constructor = constructors.Single();
+                            var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
 
-                    var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
+                            if (paramTypes.Count() != items.Count())
+                                throw new ArgumentException($"Number of capture groups doesn't match constructor arity.");
 
-                    if (paramTypes.Count() != items.Count())
-                        throw new ArgumentException($"Number of capture groups doesn't match constructor arity.");
-
-                    return constructor.Invoke(items.Select(i => i.Execute()).ToArray());
+                            return constructor.Invoke(items.Select(i => i.Execute(lastRange.Index, lastRange.Length)).ToArray());
+                        }
+                        else
+                        {
+                            return StringToType(lastRange.Value, type);
+                        }
+                    }
                 }
                 else
                 {
-                    return GroupToType(group, type);
+                    var listType = type.GetGenericArguments().Single();
+
+                    var vals = ranges.Select(range => items.Length > 0 ? items.Single().Execute(range.Index, range.Length) : StringToType(range.Value, listType));
+
+                    MethodInfo CastMethod = typeof(Enumerable).GetMethod("Cast");
+                    MethodInfo ToListMethod = typeof(Enumerable).GetMethod("ToList");
+
+                    var castItems = CastMethod.MakeGenericMethod(new Type[] { listType })
+                                              .Invoke(null, new object[] { vals });
+                    var listout = ToListMethod.MakeGenericMethod(new Type[] { listType })
+                                              .Invoke(null, new object[] { castItems });
+
+                    return listout;
+
                 }
             }
         };

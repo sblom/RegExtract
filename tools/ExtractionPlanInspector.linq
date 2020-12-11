@@ -6,10 +6,10 @@
 //"2-12 c: abcdefghi".ShowExtractionPlan<((int,int), char, string)>(@"((\d+)-(\d+)) (.): (.*)")
 //"The quick brown fox jumps over the lazy dog".ShowExtractionPlan<List<List<char>>>(@"(?:((\w)+) ?)+")
 //"2-12 18-3 10-5".ShowExtractionPlan<List<(int,int)>>(@"((\d+)-(\d+) ?)+")
-//"faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.".ShowExtractionPlan<(string,string,List<int>,List<string>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$")
-//"faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.".ShowExtractionPlan<(string,string,List<(int,string)>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$")
+"faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.".ShowExtractionPlan<(string,string,string,List<int>,List<string>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$").Dump();
+//"faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.".ShowExtractionPlan<(string,string,List<(int,string)>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$").Dump();
 
-"2-12 c: abcdefghi".ShowExtractionPlan<rule>(@"((\d+)-(\d+)) (.): (.*)").Dump();
+//"2-12 c: abcdefghi".ShowExtractionPlan<((int, int), char?, string)>(@"((\d+)-(\d+)) (.): (.*)").Dump();
 
 record bound(int lo, int hi);
-record rule(bound bound, char ch, string pwd);
+record rule(string range, int lo, int hi, char ch, string pwd);
