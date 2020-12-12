@@ -343,9 +343,16 @@ $
         [Fact]
         public void debug()
         {
-            var result = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags."
-            .Extract<(string, string, List<(int?, string)?>)>
-            (@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
+            var data = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
+            var plan = RegexExtractionPlan.CreatePlan<(string, string, List<(int?, string)?>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
+            var result = plan.Execute(Regex.Match(data, @"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$"));
+        }
+
+        [Fact]
+        public void debug2()
+        {
+            var plan = RegexExtractionPlan.CreatePlan<List<List<char>>>(@"(?:((\w)+) ?)+");
+            var result = plan.Execute(Regex.Match("The quick brown fox jumps over the lazy dog", @"(?:((\w)+) ?)+"));
         }
     }
 }

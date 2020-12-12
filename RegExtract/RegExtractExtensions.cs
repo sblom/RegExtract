@@ -55,7 +55,10 @@ namespace RegExtract
              groupNames = new Regex(rx).GetGroupNames();
 #endif
 
-            return Extract<T>(match, options, groupNames);
+            var plan = RegexExtractionPlan.CreatePlan<T>(rx);
+            return (T)plan.Execute(match);
+
+            //return Extract<T>(match, options, groupNames);
         }
 
         public static T? Extract<T>(this string str, Regex rx, RegExtractOptions options = RegExtractOptions.None)
