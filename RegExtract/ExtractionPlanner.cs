@@ -14,7 +14,6 @@ namespace RegExtract
     {
         internal static T? Extract<T>(IEnumerable<(Group group, string? name)> groups, RegExtractOptions options = RegExtractOptions.None)
         {
-
             T result = default;
 
             bool hasNamedCaptures = false;
@@ -29,11 +28,6 @@ namespace RegExtract
             var type = typeof(T);
             var constructors = type.GetConstructors()
                                    .Where(cons => cons.GetParameters().Length != 0);
-
-            if (!hasNamedCaptures && numUnnamedCaptures == 0)
-            {
-                return (T)GroupToType(groups.First().group, type);
-            }
 
             // Try to find an appropriate constructor if we have unnamed captures.
             if (numUnnamedCaptures > 0)
@@ -120,14 +114,14 @@ namespace RegExtract
             }
             else if (type.FullName.StartsWith("System.ValueTuple`"))
             {
-                return 1 + Utils.GetGenericArgumentsFlat(type).Length;
+                return 1 + Utils.GetGenericArgumentsFlat(type).Sum(type => ArityOfType(type));
             }
             else
             {
                 constructors = type.GetConstructors().Where(cons => cons.GetParameters().Length != 0).ToArray();
                 if (constructors.Length == 1)
                 {
-                    return 1 + constructors[0].GetParameters().Length;
+                    return 1 + constructors[0].GetParameters().Sum(type => ArityOfType(type.ParameterType));
                 }
                 else
                 {
@@ -195,6 +189,11 @@ namespace RegExtract
 
             IEnumerable<ConstructorInfo> constructors;
 
+            if (isNullable)
+            {
+                type = type.GetGenericArguments().Single();
+            }
+
             if (isTuple)
             {
                 typeArgs = Utils.GetGenericArgumentsFlat(type);
@@ -242,11 +241,13 @@ namespace RegExtract
 
             internal virtual object? Execute(int captureStart, int captureLength)
             {
+                Type innerType = type.FullName.StartsWith(NULLABLE_TYPENAME) ? type.GetGenericArguments().Single() : type;
+
                 var ranges = group.Captures.AsEnumerable()
                                   .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
                                   .Select(cap => (cap.Value, cap.Index, cap.Length));
 
-                bool isList = type.FullName.StartsWith(LIST_TYPENAME);
+                bool isList = innerType.FullName.StartsWith(LIST_TYPENAME);
 
                 if (!isList)
                 {
@@ -257,10 +258,8 @@ namespace RegExtract
                     }
                     else
                     {
-                        var innerType = type.FullName.StartsWith(NULLABLE_TYPENAME) ? Nullable.GetUnderlyingType(type) : type;
-
                         var lastRange = ranges.Last();
-                        var constructors = type.GetConstructors()
+                        var constructors = innerType.GetConstructors()
                                .Where(cons => cons.GetParameters().Length != 0);
 
                         if (innerType.FullName.StartsWith(VALUETUPLE_TYPENAME))

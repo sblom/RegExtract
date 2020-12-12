@@ -283,22 +283,22 @@ $
         [Fact]
         public void nested_extraction()
         {
-            var result = "2-12 c: abcdefg".Extract<(bounds, char, string)>(@"((\d+)-(\d+)) (.): (.*)", RegExtractOptions.Nested);
+            var result = "2-12 c: abcdefg".Extract<(bounds, char, string)>(@"((\d+)-(\d+)) (.): (.*)");
         }
 
         [Fact]
         public void nested_extraction_of_list()
         {
-            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<string>>(@"(?:(\w+)\W?)+", RegExtractOptions.Nested);
+            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<string>>(@"(?:(\w+)\W?)+");
         }
 
         [Fact]
         public void nested_extraction_of_bags()
         {
             var line = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
-            var regex = @"^(?<container>.+) bags contain(?: (?<none>no more bags\.)| (?<count>\d+) (?<bag>[^,.]*) bag[s]?[,.])+$";
+            var regex = @"^(.+) bags contain(?: (no more bags\.)| ((\d+) ([^,.]*)) bag[s]?[,.])+$";
 
-            var output = line.Extract<(string,string,List<int>,List<string>)>(regex,RegExtractOptions.Nested);
+            var output = line.Extract<(string,string,List<(int,string)>)>(regex);
         }
 
         [Fact]
@@ -315,9 +315,9 @@ $
         {
             var groupNames = new Regex(pattern).GetGroupNames();
             var match = Regex.Match(data, pattern);
-            var plan = ExtractionPlanner.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof((int, char, string, int, char, string, int, char, string)));
+            var plan = ExtractionPlanner.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof((int?, char, string, int, char, string, int, char, string)));
 
-            var (a, b, c, d, e, f, g, h, i) = ((int, char, string, int, char, string, int, char, string))plan.Execute()!;
+            var (a, b, c, d, e, f, g, h, i) = ((int?, char, string, int, char, string, int, char, string))plan.Execute()!;
 
             Assert.IsType<int>(a);
             Assert.IsType<char>(b);
@@ -343,9 +343,9 @@ $
         [Fact]
         public void debug()
         {
-#if !NETSTANDARD2_0 && !NET452 && DEBUG
-            "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.".ShowExtractionPlan<(string, string, List<(int, string)>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
-#endif
+            var result = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags."
+            .Extract<(string, string, List<(int?, string)?>)>
+            (@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
         }
     }
 }

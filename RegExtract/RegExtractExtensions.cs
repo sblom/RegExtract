@@ -12,7 +12,7 @@ namespace RegExtract
     {
         None = 0x0,
         Strict = 1<<0,
-        Nested = 1<<1
+        BetaCompat = 1<<1
     }
 
     public static class RegExtractExtensions
@@ -30,13 +30,15 @@ namespace RegExtract
 #endif
             }
 
-            if (options.HasFlag(RegExtractOptions.Nested))
+            if (options.HasFlag(RegExtractOptions.BetaCompat) || groupNames.Any(name => !int.TryParse(name, out var _)))
+            {
+                return ExtractionPlanner.Extract<T>(match.Groups.AsEnumerable().Zip(groupNames ?? Enumerable.Repeat<string?>(null, int.MaxValue), (group, name) => (group, name)), options);
+            }
+            else
             {
                 var plan = CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof(T));
                 return (T)plan.Execute();
             }
-            else
-                return ExtractionPlanner.Extract<T>(match.Groups.AsEnumerable().Zip(groupNames ?? Enumerable.Repeat<string?>(null, int.MaxValue), (group,name) => (group,name)), options);
         }
 
         public static T? Extract<T>(this string str, string rx, RegExtractOptions options = RegExtractOptions.None)
