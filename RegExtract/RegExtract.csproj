@@ -3,6 +3,11 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net40</TargetFrameworks>
     <Nullable>enable</Nullable>
+    <LangVersion>Latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- NuGet package config -->
+  <PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Clean &amp; simple, idiomatic C# RegEx-based line parser.
 
@@ -18,9 +23,11 @@ See more docs at project page: https://github.com/sblom/RegExtract
     <PackageProjectUrl>https://github.com/sblom/RegExtract</PackageProjectUrl>
     <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
     <PackageTags>linqpad-samples regex parse parser parsing deserialize deserialization string tuple valuetuple record</PackageTags>
-    <LangVersion>Latest</LangVersion>
-
-    <!-- SourceLink configuration -->
+    <PackageIcon>icon.png</PackageIcon>
+  </PropertyGroup>
+  
+  <!-- SourceLink configuration -->
+  <PropertyGroup>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
@@ -51,6 +58,9 @@ See more docs at project page: https://github.com/sblom/RegExtract
 
   <ItemGroup>
     <None Include="..\doc\linqpad-samples\**" Pack="True" PackagePath="linqpad-samples\">
+      <Visible>false</Visible>
+    </None>
+    <None Include="..\images\icon.png" Pack="True" PackagePath="\">
       <Visible>false</Visible>
     </None>
   </ItemGroup>
