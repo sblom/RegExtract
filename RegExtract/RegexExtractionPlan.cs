@@ -29,17 +29,17 @@ namespace RegExtract
         {
             object? result = null;
 
+            var ranges = match.Groups[Name].Captures.AsEnumerable()
+                  .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
+                  .Select(cap => (cap.Value, cap.Index, cap.Length));
+
             if (Name == "0" && ConstructorGroups.Count == 1 && Type == ConstructorGroups[0].Type)
             {
-                result = ConstructorGroups[0].Execute(match, captureStart, captureLength);
+                return ConstructorGroups[0].Execute(match, captureStart, captureLength);
             }
             else
             {
                 Type innerType = Type.FullName.StartsWith(NULLABLE_TYPENAME) ? Type.GetGenericArguments().Single() : Type;
-
-                var ranges = match.Groups[Name].Captures.AsEnumerable()
-                                  .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
-                                  .Select(cap => (cap.Value, cap.Index, cap.Length));
 
                 bool isList = Type.FullName.StartsWith(LIST_TYPENAME);
 
@@ -47,8 +47,8 @@ namespace RegExtract
                 {
                     if (!ranges.Any())
                     {
-                        if (Type.IsClass || Nullable.GetUnderlyingType(Type) != null) result = null;
-                        else result = Convert.ChangeType(null, Type);
+                        if (Type.IsClass || Nullable.GetUnderlyingType(Type) != null) return null;
+                        else return Convert.ChangeType(null, Type);
                     }
                     else
                     {
@@ -77,6 +77,12 @@ namespace RegExtract
                 }
             }
 
+            foreach (var prop in PropertyGroups)
+            {
+                var lastRange = ranges.Last();
+                result.GetType().GetProperty(prop.Name).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
+            }
+
             return result;
         }
 
@@ -84,7 +90,7 @@ namespace RegExtract
         {
             object? result;
             var constructors = innerType.GetConstructors()
-                .Where(cons => cons.GetParameters().Length != 0);
+                .Where(cons => cons.GetParameters().Length == ConstructorGroups.Count);
 
             if (innerType.FullName.StartsWith(VALUETUPLE_TYPENAME))
             {
