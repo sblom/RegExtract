@@ -15,7 +15,7 @@ namespace RegExtract.Test
         const string pattern = "(.)(.)(.)(.)(.)(.)(.)(.)(.)";
         const string pattern_nested = "(((.)(.)(.)(.)(.)(.)(.)(.)(.)))";
         const string pattern_named = "(?<n>(?<s>(?<a>.)(?<b>.)(?<c>.)(?<d>.)(?<e>.)(?<f>.)(?<g>.)(?<h>.)(?<i>.)))";
-
+#if false
         [Fact]
         public void can_extract_to_tuple()
         {
@@ -343,17 +343,36 @@ $
         [Fact]
         public void debug()
         {
-            var data = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
-            var plan = RegexExtractionPlan.CreatePlan<(string, string, List<(int?, string)?>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
-            var result = plan.Execute(Regex.Match(data, @"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$"));
+            //var data = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
+            //var plan = RegexExtractionPlan.CreatePlan<(string, string, List<(int?, string)?>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
+            //var result = plan.Execute(Regex.Match(data, @"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$"));
         }
 
         [Fact]
         public void debug2()
         {
-            var plan = RegexExtractionPlan.CreatePlan<List<List<char>>>(@"(?:((\w)+) ?)+");
-            var result = plan.Execute(Regex.Match("The quick brown fox jumps over the lazy dog", @"(?:((\w)+) ?)+"));
+            //var plan = RegexExtractionPlan.CreatePlan<List<List<char>>>(@"(?:((\w)+) ?)+");
+            //var result = plan.Execute(Regex.Match("The quick brown fox jumps over the lazy dog", @"(?:((\w)+) ?)+"));
 
+        }
+#endif
+
+        [Fact]
+        public void CreateTreePlan()
+        {
+            var regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
+            var plan = ExtractionPlan<((int?, int?)?, char, string)?>.CreatePlan(regex, ExtractionPlanType.Tree);
+            object result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
+
+            regex = new Regex(@"(?:((\w)+) ?)+");
+            var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex, ExtractionPlanType.Tree);
+
+            result = plan2.Extract(regex.Match("The quick brown fox jumps over the lazy dog"));
+
+            regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
+            var plan3 = ExtractionPlan<List<((int?, int?)?, char, string)?>>.CreatePlan(regex, ExtractionPlanType.Tree);
+
+            result = plan3.Extract(regex.Match("2-12 c: abcdefgji"));
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RegExtract.RegexTools
+namespace RegExtract
 {
     internal record RegexCaptureGroupNode(string name, RegexCaptureGroupNode[] children);
 

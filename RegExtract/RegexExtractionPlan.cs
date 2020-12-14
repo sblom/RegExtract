@@ -11,6 +11,7 @@ namespace RegExtract
 {
     internal record RegexExtractionPlan(string Name, List<RegexExtractionPlan> ConstructorGroups, List<RegexExtractionPlan> PropertyGroups, Type Type)
     {
+#if false
         internal static RegexExtractionPlan CreatePlan<T>(string regex)
         {
             var type = typeof(T);
@@ -280,58 +281,6 @@ namespace RegExtract
             return new RegexExtractionPlan(myname, groups, namedgroups, type);
         }
 
-        internal static int ArityOfType(Type type, bool recursive = false)
-        {
-            ConstructorInfo[] constructors;
-
-            if (type.FullName.StartsWith("System.Nullable`"))
-            {
-                return ArityOfType(type.GetGenericArguments().Single());
-            }
-            else if (type.FullName.StartsWith("System.Collections.Generic.List`"))
-            {
-                var subtype = type.GetGenericArguments().Single();
-                if (subtype.FullName.StartsWith("System.Collections.Generic.List`"))
-                {
-                    return 1 + ArityOfType(subtype);
-                }
-                else
-                {
-                    return ArityOfType(subtype);
-                }
-            }
-            else if (type.FullName.StartsWith("System.ValueTuple`"))
-            {
-                return 1 + GetTupleArgumentsList(type).Sum(type => ArityOfType(type));
-            }
-            else
-            {
-                constructors = type.GetConstructors().Where(cons => cons.GetParameters().Length != 0).ToArray();
-                if (constructors.Length == 1)
-                {
-                    return 1 + constructors[0].GetParameters().Sum(type => ArityOfType(type.ParameterType));
-                }
-                else
-                {
-                    return 1;
-                }
-            }
-        }
-
-        static Type[] GetTupleArgumentsList(Type type)
-        {
-            var typeArgs = type.GetGenericArguments();
-
-            if (type.FullName.StartsWith(VALUETUPLE_TYPENAME) && typeArgs.Length == 8)
-            {
-                return typeArgs.Take(7).Concat(GetTupleArgumentsList(typeArgs[7])).ToArray();
-            }
-            else
-            {
-                return typeArgs;
-            }
-        }
-
         internal static object StringToType(string val, Type type)
         {
             if (type.FullName.StartsWith("System.Nullable`1"))
@@ -382,5 +331,7 @@ namespace RegExtract
             }
 
         }
+#endif
     }
+
 }

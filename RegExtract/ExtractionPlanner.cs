@@ -12,6 +12,7 @@ namespace RegExtract
     internal static class ExtractionPlanner
 
     {
+#if false
         internal static T? Extract<T>(IEnumerable<(Group group, string? name)> groups, RegExtractOptions options = RegExtractOptions.None)
         {
             T result = default;
@@ -156,7 +157,7 @@ namespace RegExtract
             var groupsArray = groups.Zip(groupNames, (group, name) => (group, name)).ToArray();
             var groupsSlice = new ReadOnlySlice<(Group, string?)>(groupsArray);
 
-            if (arity == 1 || type.FullName.StartsWith(LIST_TYPENAME))
+            if (arity == 1 || IsList(type))
             {
                 var groupsSubSlice = ReadOnlySlice<(Group, string?)>.Slice(groupsSlice, 1, groupsArray.Length - 1);
 
@@ -391,5 +392,6 @@ namespace RegExtract
 
             return CreateGenericTuple(tupleType, groups.Zip(typeArgs, GroupToType));
         }
+#endif
     }
 }

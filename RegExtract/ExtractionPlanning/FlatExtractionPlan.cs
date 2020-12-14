@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace RegExtract.ExtractionPlanning
+namespace RegExtract
 {
-    public class TypeFirstExtractionPlanner<T> : ExtractionPlan<T>
+    public class FlatExtractionPlan<T> : ExtractionPlan<T>
     {
-        public override T Extract(Match match)
+        internal override void InitializePlan(Regex regex)
         {
             throw new NotImplementedException();
         }

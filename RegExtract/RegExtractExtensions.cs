@@ -17,6 +17,7 @@ namespace RegExtract
 
     public static class RegExtractExtensions
     {
+#if false
         public static T? Extract<T>(this Match match, RegExtractOptions options = RegExtractOptions.None, string?[]? groupNames = null)
         {
             if (!match.Success)
@@ -93,5 +94,6 @@ namespace RegExtract
 
             return Extract<T>(match, options, groupNames);
         }
+#endif
     }
 }

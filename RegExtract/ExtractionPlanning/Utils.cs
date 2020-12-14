@@ -9,7 +9,5 @@ namespace RegExtract
 {
     internal static partial class Utils
     {
-
     }
 }
-
