@@ -4,44 +4,16 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-using static RegExtract.ExtractionPlanner;
-
 namespace RegExtract
 {
     public enum RegExtractOptions
     {
         None = 0x0,
-        Strict = 1<<0,
-        BetaCompat = 1<<1
+        Strict = 1<<0
     }
 
     public static class RegExtractExtensions
     {
-#if false
-        public static T? Extract<T>(this Match match, RegExtractOptions options = RegExtractOptions.None, string?[]? groupNames = null)
-        {
-            if (!match.Success)
-                throw new ArgumentException("Regex failed to match input.");
-
-            if (groupNames == null)
-            {
-                groupNames = new string?[match.Groups.Count];
-#if !NETSTANDARD2_0 && !NET40
-                groupNames = match.Groups.Select(g => g.Name).ToArray();
-#endif
-            }
-
-            if (options.HasFlag(RegExtractOptions.BetaCompat) || groupNames.Any(name => !int.TryParse(name, out var _)))
-            {
-                return ExtractionPlanner.Extract<T>(match.Groups.AsEnumerable().Zip(groupNames ?? Enumerable.Repeat<string?>(null, int.MaxValue), (group, name) => (group, name)), options);
-            }
-            else
-            {
-                var plan = CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof(T));
-                return (T)plan.Execute();
-            }
-        }
-
         public static T? Extract<T>(this string str, string rx, RegExtractOptions options = RegExtractOptions.None)
         {
             return Extract<T>(str, rx, RegexOptions.None, options);
@@ -51,27 +23,22 @@ namespace RegExtract
         {
             var match = Regex.Match(str, rx, rxOptions);
 
-            string[]? groupNames = null;
-#if NETSTANDARD2_0 || NET40
-             groupNames = new Regex(rx).GetGroupNames();
-#endif
-
-            var plan = RegexExtractionPlan.CreatePlan<T>(rx);
-            return (T)plan.Execute(match);
-
-            //return Extract<T>(match, options, groupNames);
+            var plan = ExtractionPlan<T>.CreatePlan(new Regex(rx));
+            return (T)plan.Extract(match);
         }
 
         public static T? Extract<T>(this string str, Regex rx, RegExtractOptions options = RegExtractOptions.None)
         {
             var match = rx.Match(str);
 
-            string[]? groupNames = null;
-#if NETSTANDARD2_0 || NET40
-            groupNames = rx.GetGroupNames();
-#endif
-            
-            return Extract<T>(match, options,groupNames);
+            var plan = ExtractionPlan<T>.CreatePlan(rx);
+            return (T)plan.Extract(match);
+        }
+
+        public static T? Extract<T>(this string str, Regex rx, Match match, RegExtractOptions options = RegExtractOptions.None)
+        {
+            var plan = ExtractionPlan<T>.CreatePlan(rx);
+            return (T)plan.Extract(match);
         }
 
         public static T? Extract<T>(this string str, RegExtractOptions options = RegExtractOptions.None)
@@ -87,13 +54,7 @@ namespace RegExtract
 
             var match = Regex.Match(str, rxPattern, rxOptions);
 
-            string[]? groupNames = null;
-#if NETSTANDARD2_0 || NET40
-            groupNames = new Regex(rxPattern, rxOptions).GetGroupNames();
-#endif
-
-            return Extract<T>(match, options, groupNames);
+            return Extract<T>(str, new Regex(rxPattern), match, options);
         }
-#endif
     }
 }
