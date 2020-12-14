@@ -7,7 +7,11 @@ using System.Text.RegularExpressions;
 
 namespace RegExtract
 {
-    internal record RegexCaptureGroupNode(string name, RegexCaptureGroupNode[] children);
+    internal record RegexCaptureGroupNode(string name, RegexCaptureGroupNode[] children, string rxText)
+    {
+        public IEnumerable<RegexCaptureGroupNode> NamedGroups => children.Where(node => !int.TryParse(node.name, out var _));
+        public IEnumerable<RegexCaptureGroupNode> NumberedGroups => children.Where(node => int.TryParse(node.name, out var _));
+    }
 
     internal class RegexCaptureGroupTree
     {
@@ -47,10 +51,10 @@ namespace RegExtract
         private void InitializeTree()
         {
             int loc = 0, num = 0;
-            Tree = BuildCaptureGroupTree(ref loc, ref num);
+            Tree = BuildCaptureGroupTree(ref loc, ref num, 0);
         }
 
-        private RegexCaptureGroupNode BuildCaptureGroupTree(ref int loc, ref int num, string? name = null)
+        private RegexCaptureGroupNode BuildCaptureGroupTree(ref int loc, ref int num, int start, string? name = null)
         {
             string myname = name ?? num.ToString();
             List<RegexCaptureGroupNode> children = new();
@@ -60,6 +64,7 @@ namespace RegExtract
             int nameStart = -1;
             int ignoreGroups = 0;
             char openchar = ' ';
+            int groupStart = 0;
 
             for (; loc < _regexString.Length; loc++)
             {
@@ -75,7 +80,7 @@ namespace RegExtract
                         loc++;
                         var parsedName = _regexString.Substring(nameStart, loc - nameStart - 1);
                         Groups.Add(parsedName);
-                        children.Add(BuildCaptureGroupTree(ref loc, ref num, _regexString.Substring(nameStart, loc - nameStart - 1)));
+                        children.Add(BuildCaptureGroupTree(ref loc, ref num, groupStart, _regexString.Substring(nameStart, loc - nameStart - 1)));
                         nameStart = -1;
                         continue;
                     }
@@ -106,6 +111,7 @@ namespace RegExtract
                         escape = true;
                         break;
                     case '(':
+                        groupStart = loc;
                         if (_regexString[loc + 1] == '?')
                         {
                             if (_regexString[loc + 2] != '<' && _regexString[loc + 2] != '\'')
@@ -126,7 +132,7 @@ namespace RegExtract
                             num++;
                             loc++;
                             Groups.Add(num.ToString());
-                            children.Add(BuildCaptureGroupTree(ref loc, ref num));
+                            children.Add(BuildCaptureGroupTree(ref loc, ref num, groupStart));
                         }
                         break;
                     case ')':
@@ -138,7 +144,7 @@ namespace RegExtract
                         else
                         {
                             if (myname == "0") throw new Exception("Too many close parens.");
-                            return new RegexCaptureGroupNode(myname, children.ToArray());
+                            return new RegexCaptureGroupNode(myname, children.ToArray(), _regexString.Substring(start, loc - start + 1));
                         }
                     case '[':
                         loc++;
@@ -159,7 +165,7 @@ namespace RegExtract
             Groups = Groups.OrderBy(name => int.TryParse(name, out var _) ? 0 : 1).ToList();
             Debug.Assert(Groups.Zip(Regex.GetGroupNames(), (a,b) => a == b).All(b => b), "Group List doesn't match Regex.GetGroupNames()");
 
-            return new RegexCaptureGroupNode(myname, children.ToArray());
+            return new RegexCaptureGroupNode(myname, children.ToArray(), _regexString.Substring(start, loc - start - 1));
         }
     }
 }

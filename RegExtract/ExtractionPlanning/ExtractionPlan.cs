@@ -20,21 +20,9 @@ namespace RegExtract
             return (T)Plan.Execute(match);
         }
 
-        static public ExtractionPlan<T> CreatePlan(Regex regex, ExtractionPlanType planType = ExtractionPlanType.Flat)
+        static public ExtractionPlan<T> CreatePlan(Regex regex, RegExtractOptions reOptions= RegExtractOptions.None)
         {
-            ExtractionPlan<T> plan;
-
-            switch (planType)
-            {
-                case ExtractionPlanType.Tree:
-                    plan = new TreeExtractionPlan<T>();
-                    break;
-                default:
-                case ExtractionPlanType.Flat:
-                    plan = new FlatExtractionPlan<T>();
-                    break;
-            }
-
+            ExtractionPlan<T> plan = new FlatExtractionPlan<T>();
             plan.InitializePlan(regex);
 
             return plan;

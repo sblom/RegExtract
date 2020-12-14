@@ -15,7 +15,7 @@ namespace RegExtract.Test
         const string pattern = "(.)(.)(.)(.)(.)(.)(.)(.)(.)";
         const string pattern_nested = "(((.)(.)(.)(.)(.)(.)(.)(.)(.)))";
         const string pattern_named = "(?<n>(?<s>(?<a>.)(?<b>.)(?<c>.)(?<d>.)(?<e>.)(?<f>.)(?<g>.)(?<h>.)(?<i>.)))";
-#if false
+
         [Fact]
         public void can_extract_to_tuple()
         {
@@ -162,14 +162,14 @@ namespace RegExtract.Test
 |    (?:hcl: (?:(?<hcl>\#[0-9a-f]{6})                                   |.*?) )
 |    (?:ecl: (?:(?<ecl>amb|blu|brn|gry|grn|hzl|oth)                     |.*?) )
 |    (?:pid: (?:(?<pid>[0-9]{9})                                        |.*?) )
-|    (?:cid: (.*?)                                                          )
+|    (?:cid: (?:.*?)                                                          )
 )
 \b\s*)+
 $
 ";
             var mondo = new Regex(mondoString, RegexOptions.IgnorePatternWhitespace);
 
-            "hgt:61in iyr:2014 pid:916315544 hcl:#733820 ecl:oth".Extract<Passport>(mondoString,RegexOptions.IgnorePatternWhitespace);
+            var result = "hgt:61in iyr:2014 pid:916315544 hcl:#733820 ecl:oth".Extract<Passport>(mondoString,RegexOptions.IgnorePatternWhitespace);
 
             //TODO: this was the only test using the `this Match` extension for Extract. Should re-add one.
         }
@@ -186,7 +186,7 @@ $
         public void can_extract_capture_collections_to_lists()
         {
             var line = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
-            var regex = @"^(?<container>.+) bags contain( (?<none>no more bags\.)| (?<count>\d+) (?<bag>[^,.]*) bag[s]?[,.])+$";
+            var regex = @"^(?<container>.+) bags contain(?: (?<none>no more bags\.)| (?<count>\d+) (?<bag>[^,.]*) bag[s]?[,.])+$";
 
             var output = line.Extract<Container>(regex);
         }
@@ -249,24 +249,6 @@ $
         const RegexOptions opts = RegexOptions.IgnoreCase|RegexOptions.Multiline;
 
         [Fact]
-        public void group_to_type_list_of_int()
-        {
-            var match = Regex.Match("123 456 789", @"(?:(\d+) ?)+");
-            ExtractionPlanner.GroupToType(match.Groups[1], typeof(List<int>));
-
-            match = Regex.Match("", @"(\d+)?");
-            ExtractionPlanner.GroupToType(match.Groups[1], typeof(int?));
-
-            Assert.Throws<InvalidCastException>(() => ExtractionPlanner.GroupToType(match.Groups[1], typeof(int)));
-        }
-
-        [Fact]
-        public void string_to_type_tests()
-        {
-            ExtractionPlanner.StringToType("123", typeof(int?));
-        }
-
-        [Fact]
         public void can_extract_to_string_constructor()
         {
             "https://www.google.com/".Extract<Uri>(".*");
@@ -304,20 +286,20 @@ $
         [Fact]
         public void extraction_plan()
         {
-            var groupNames = new Regex(@"((\d+)-(\d+)) (.): (.*)").GetGroupNames();
-            var match = Regex.Match("2-12 c: abcdefg", @"((\d+)-(\d+)) (.): (.*)");
-            var plan = ExtractionPlanner.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof(((int, int), char, string)));
-            ((int,int),char,string) result = (((int, int), char, string))plan.Execute()!;
+            var regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
+            var match = regex.Match("2-12 c: abcdefg");
+            var plan = ExtractionPlan<((int, int), char, string)>.CreatePlan(regex);
+            var result = plan.Extract(match);
         }
 
         [Fact]
         public void extraction_plan_to_long_tuple()
         {
-            var groupNames = new Regex(pattern).GetGroupNames();
+            var regex = new Regex(pattern);
             var match = Regex.Match(data, pattern);
-            var plan = ExtractionPlanner.CreateExtractionPlan(match.Groups.AsEnumerable(), groupNames, typeof((int?, char, string, int, char, string, int, char, string)));
+            var plan = ExtractionPlan<(int?, char, string, int, char, string, int, char, string)>.CreatePlan(regex);
 
-            var (a, b, c, d, e, f, g, h, i) = ((int?, char, string, int, char, string, int, char, string))plan.Execute()!;
+            var (a, b, c, d, e, f, g, h, i) = plan.Extract(match);
 
             Assert.IsType<int>(a);
             Assert.IsType<char>(b);
@@ -355,22 +337,21 @@ $
             //var result = plan.Execute(Regex.Match("The quick brown fox jumps over the lazy dog", @"(?:((\w)+) ?)+"));
 
         }
-#endif
 
         [Fact]
         public void CreateTreePlan()
         {
             var regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))");
-            var plan = ExtractionPlan<(string, (int?, int?)?, char, string)?>.CreatePlan(regex, ExtractionPlanType.Flat);
+            var plan = ExtractionPlan<(string, (int?, int?)?, char, string)?>.CreatePlan(regex);
             object result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
 
             regex = new Regex(@"(?:((\w)+) ?)+");
-            var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex, ExtractionPlanType.Tree);
+            var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex);
 
             result = plan2.Extract(regex.Match("The quick brown fox jumps over the lazy dog"));
 
             regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
-            var plan3 = ExtractionPlan<List<((int?, int?)?, char, string)?>>.CreatePlan(regex, ExtractionPlanType.Tree);
+            var plan3 = ExtractionPlan<List<((int?, int?)?, char, string)?>>.CreatePlan(regex);
 
             result = plan3.Extract(regex.Match("2-12 c: abcdefgji"));
         }

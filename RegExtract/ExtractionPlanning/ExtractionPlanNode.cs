@@ -146,7 +146,7 @@ namespace RegExtract
             var typeArgs = tupleType.GetGenericArguments();
             var constructor = tupleType.GetConstructor(tupleType.GetGenericArguments());
 
-            if (vals.Count() != typeArgs.Count())
+            if (typeArgs.Count() < 8 && vals.Count() != typeArgs.Count())
                 throw new ArgumentException($"Number of capture groups doesn't match tuple arity.");
 
             if (typeArgs.Count() <= 7)

@@ -27,7 +27,7 @@ namespace RegExtract
             }
 
             // TODO: Really need to think this through, and think lists through in general. I'm pretty sure there are still subtle list bugs around.
-            if (ArityOfType(type) == 1 || (IsList(type) && IsList(type.GetGenericArguments().Single())))
+            if ((ArityOfType(type) == 1 && !tree.NamedGroups.Any())|| (IsList(type) && IsList(type.GetGenericArguments().Single())))
             {
                 return new RootVirtualTupleExtractionPlanNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type).Item1 }, new ExtractionPlanNode[0]);
             }
@@ -110,7 +110,7 @@ namespace RegExtract
                     }
                     else
                     {
-                        namedgroups.Add(BindPropertyPlan(node, type, tree.name).Item1);
+                        namedgroups.Add(BindPropertyPlan(node, type, node.name).Item1);
                     }
                 }
             }
