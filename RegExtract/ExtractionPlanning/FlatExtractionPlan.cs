@@ -93,7 +93,7 @@ namespace RegExtract
 
             Queue<RegexCaptureGroupNode> queue = new Queue<RegexCaptureGroupNode>(tree.children);
 
-            if (!IsBottomType(type))
+            if (!IsDirectlyConstructable(type))
             {
                 while (queue.Any())
                 {

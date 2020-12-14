@@ -47,7 +47,7 @@ namespace RegExtract
             return type.FullName.StartsWith(NULLABLE_TYPENAME);
         }
 
-        protected bool IsBottomType(Type type)
+        protected bool IsDirectlyConstructable(Type type)
         {
             if (type == typeof(string))
             {
@@ -62,6 +62,11 @@ namespace RegExtract
             if (IsNullable(type))
             {
                 type = type.GetGenericArguments().Single();
+            }
+
+            if (IsList(type))
+            {
+                return false;
             }
 
             if (IsTuple(type))

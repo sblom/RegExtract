@@ -271,7 +271,7 @@ $
         [Fact]
         public void nested_extraction_of_list()
         {
-            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<string>>(@"(?:(\w+)\W?)+");
+            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<List<char>>>(@"(?:(\w)+\W?)+");
         }
 
         [Fact]
