@@ -15,10 +15,10 @@ namespace RegExtract
             _tree = new RegexCaptureGroupTree(regex);
             Type type = typeof(T);
 
-            Plan = AssignTypesToTreeRoot(_tree.Tree, type);
+            Plan = AssignTypeToTree_0(_tree.Tree, type);
         }
 
-        private ExtractionPlanNode AssignTypesToTreeRoot(RegexCaptureGroupNode tree, Type type)
+        private ExtractionPlanNode AssignTypeToTree_0(RegexCaptureGroupNode tree, Type type)
         {
             if (!tree.children.Any())
             {
@@ -28,10 +28,10 @@ namespace RegExtract
             // TODO: Really need to think this through, and think lists through in general. I'm pretty sure there are still subtle list bugs around.
             if (ArityOfType(type) == 1 || (IsList(type) && IsList(type.GetGenericArguments().Single())))
             {
-                return new RootVirtualTupleExtractionPlanNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
+                return new RootVirtualTupleExtractionPlanNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
             }
 
-            return AssignTypesToTree(tree, type);
+            return AssignTypesToTree_Recursive(tree, type);
         }
 
         ExtractionPlanNode BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
@@ -48,7 +48,7 @@ namespace RegExtract
 
             type = property.PropertyType;
 
-            return AssignTypesToTree(tree, type);
+            return AssignTypesToTree_Recursive(tree, type);
         }
 
         ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum)
@@ -82,11 +82,11 @@ namespace RegExtract
                 type = constructor.GetParameters()[paramNum].ParameterType;
             }
 
-            return AssignTypesToTree(tree, type);
+            return AssignTypesToTree_Recursive(tree, type);
         }
 
 
-        private ExtractionPlanNode AssignTypesToTree(RegexCaptureGroupNode tree, Type type)
+        private ExtractionPlanNode AssignTypesToTree_Recursive(RegexCaptureGroupNode tree, Type type)
         {
             List<ExtractionPlanNode> groups = new();
             List<ExtractionPlanNode> namedgroups = new();

@@ -59,6 +59,54 @@ namespace RegExtract
             return type.FullName.StartsWith(NULLABLE_TYPENAME);
         }
 
+        protected bool IsBottomType(Type type)
+        {
+            if (type == typeof(string))
+            {
+                return true;
+            }
+
+            if (IsList(type))
+            {
+                type = type.GetGenericArguments().Single();
+            }
+
+            if (IsNullable(type))
+            {
+                type = type.GetGenericArguments().Single();
+            }
+
+            if (IsTuple(type))
+            {
+                return false;
+            }
+
+            var parse = type.GetMethod("Parse",
+                            BindingFlags.Static | BindingFlags.Public,
+                            null,
+                            new Type[] { typeof(string) },
+                            null);
+
+            if (parse is not null)
+            {
+                return true;
+            }
+
+            var constructor = type.GetConstructor(new[] { typeof(string) });
+
+            if (constructor is not null)
+            {
+                return true;
+            }
+
+            if (type.BaseType == typeof(Enum))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         protected int ArityOfType(Type type, bool recursive = false)
         {
             ConstructorInfo[] constructors;

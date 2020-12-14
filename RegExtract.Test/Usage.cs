@@ -360,8 +360,8 @@ $
         [Fact]
         public void CreateTreePlan()
         {
-            var regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
-            var plan = ExtractionPlan<((int?, int?)?, char, string)?>.CreatePlan(regex, ExtractionPlanType.Tree);
+            var regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))");
+            var plan = ExtractionPlan<(string, (int?, int?)?, char, string)?>.CreatePlan(regex, ExtractionPlanType.Flat);
             object result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
 
             regex = new Regex(@"(?:((\w)+) ?)+");
