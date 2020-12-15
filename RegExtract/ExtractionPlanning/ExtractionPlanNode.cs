@@ -14,6 +14,11 @@ namespace RegExtract
         {
             return constructorParams.Single().Execute(match, captureStart, captureLength);
         }
+
+        internal override void Validate()
+        {
+            base.Validate();
+        }
     }
 
     public record ListOfListsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
@@ -22,6 +27,14 @@ namespace RegExtract
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
             return constructorParams.Single().Execute(match, range.Index, range.Length);
+        }
+
+        internal override void Validate()
+        {
+            if (!IsList(type) || !IsList(type.GetGenericArguments().Single()))
+                throw new InvalidOperationException($"{nameof(ListOfListsNode)} assigned type other than List<List<T>>");
+
+            base.Validate();
         }
     }
 
@@ -33,6 +46,17 @@ namespace RegExtract
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             return CreateGenericTuple(type, constructorParams.Select(i => i.Execute(match, range.Index, range.Length)));
+        }
+
+        internal override void Validate()
+        {
+            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
+
+            if (!IsTuple(unwrappedType))
+                throw new InvalidOperationException($"{nameof(ListOfListsNode)} assigned type other than ValueTuple<>");
+
+            base.Validate();
         }
     }
 
@@ -51,6 +75,19 @@ namespace RegExtract
             var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
 
             return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
+        }
+
+        internal override void Validate()
+        {
+            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
+            var constructors = unwrappedType.GetConstructors()
+                .Where(cons => cons.GetParameters().Length == constructorParams.Length);
+
+            if (constructors.Count() != 1)
+                throw new InvalidOperationException($"{nameof(ConstructorWithParamsNode)} has wrong number of constructor params.");
+
+            base.Validate();
         }
     }
 
@@ -74,6 +111,18 @@ namespace RegExtract
         
             return constructor.Invoke(new[] { range.Value });
         }
+
+        internal override void Validate()
+        {
+            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
+            var constructor = unwrappedType.GetConstructor(new[] { typeof(string) });
+
+            if (constructor is null || constructorParams.Length != 0)
+                throw new InvalidOperationException($"{nameof(StringConstructorNode)} has wrong type or constructor params.");
+
+            base.Validate();
+        }
     }
 
     public record StaticParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
@@ -92,7 +141,24 @@ namespace RegExtract
 
                 return parse.Invoke(null, new object[] { range.Value });
             }
+
+        internal override void Validate()
+        {
+            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
+
+            var parse = unwrappedType.GetMethod("Parse",
+                            BindingFlags.Static | BindingFlags.Public,
+                            null,
+                            new Type[] { typeof(string) },
+                            null);
+
+            if (parse is null)
+                throw new InvalidOperationException($"{nameof(StaticParseNode)} has wrong type or constructor params.");
+
+            base.Validate();
         }
+    }
 
     public record StringNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
@@ -123,20 +189,31 @@ namespace RegExtract
 
 
 
+            ExtractionPlanNode node;
+
             if (IsList(innerType))
-                return new ListOfListsNode(groupName, type, constructorParams, propertySetters);
+                node = new ListOfListsNode(groupName, type, constructorParams, propertySetters);
             else if (IsTuple(innerType))
-                return new TupleNode(groupName, type, constructorParams, propertySetters);
+                node = new TupleNode(groupName, type, constructorParams, propertySetters);
             else if (multiConstructor.Count() == 1)
-                return new ConstructorWithParamsNode(groupName, type, constructorParams, propertySetters);
+                node = new ConstructorWithParamsNode(groupName, type, constructorParams, propertySetters);
             else if (parse is not null)
-                return new StaticParseNode(groupName, type, constructorParams, propertySetters);
+                node = new StaticParseNode(groupName, type, constructorParams, propertySetters);
             else if (constructor is not null)
-                return new StringConstructorNode(groupName, type, constructorParams, propertySetters);
+                node = new StringConstructorNode(groupName, type, constructorParams, propertySetters);
             else if (innerType.BaseType == typeof(Enum))
-                return new EnumNode(groupName, type, constructorParams, propertySetters);
+                node = new EnumNode(groupName, type, constructorParams, propertySetters);
             else
-                return new StringNode(groupName, type, constructorParams, propertySetters);
+                node = new StringNode(groupName, type, constructorParams, propertySetters);
+
+            node.Validate();
+
+            return node;
+        }
+
+        internal virtual void Validate()
+        {
+            return;
         }
 
         internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range)

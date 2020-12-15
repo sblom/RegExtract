@@ -32,7 +32,11 @@ namespace RegExtract
                 return new VirtualUnaryTupleNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type).Item1 }, new ExtractionPlanNode[0]);
             }
 
-            return AssignTypesToTree_Recursive(tree, type).Item1;
+            var (plan, remainder) = AssignTypesToTree_Recursive(tree, type);
+
+            if (remainder.Any()) throw new ArgumentException("Provided type did not consume all regular expression captures.");
+
+            return plan;
         }
 
         (ExtractionPlanNode, RegexCaptureGroupNode[]) BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
@@ -75,7 +79,7 @@ namespace RegExtract
                 }
                 catch (IndexOutOfRangeException ex)
                 {
-                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for tuple {type.Name}");
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for tuple {type.FullName}");
                 }
             }
             else if (constructors?.Count() == 1)
@@ -88,7 +92,7 @@ namespace RegExtract
                 }
                 catch (IndexOutOfRangeException ex)
                 {
-                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for constructor {type.Name}");
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for constructor {type.FullName}");
                 }
             }
 
@@ -110,9 +114,9 @@ namespace RegExtract
 
                     if (int.TryParse(node.name, out var num))
                     {
-                        var constructorPlan = BindConstructorPlan(node, type, groups.Count);
-                        groups.Add(constructorPlan.Item1);
-                        foreach (var extra in constructorPlan.Item2)
+                        var (plan, remainder) = BindConstructorPlan(node, type, groups.Count);
+                        groups.Add(plan);
+                        foreach (var extra in remainder)
                         {
                             queue.Enqueue(extra);
                         }
