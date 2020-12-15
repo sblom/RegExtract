@@ -16,12 +16,12 @@ RegExtract takes a string and a regular expression template and deserializes to 
 See more docs at project page: https://github.com/sblom/RegExtract
 </Description>
     <Version>1.0.8-beta</Version>
-    <Authors>sblom</Authors>
+    <Authors>Scott Blomquist</Authors>
     <Copyright>Copyright © Scott Blomquist. All rights reserved.</Copyright>
     <Company />
     <Product />
     <PackageProjectUrl>https://github.com/sblom/RegExtract</PackageProjectUrl>
-    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>regex parse parser reader deserialize deserializer valuetuple record deserialization parsing regular-expression regular-expressions regular expression expressions type string tuple linqpad-samples</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
