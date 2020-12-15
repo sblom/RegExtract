@@ -22,7 +22,7 @@ namespace RegExtract
 
         static public ExtractionPlan<T> CreatePlan(Regex regex, RegExtractOptions reOptions= RegExtractOptions.None)
         {
-            ExtractionPlan<T> plan = new FlatExtractionPlan<T>();
+            ExtractionPlan<T> plan = new ExtractionPlanner<T>();
             plan.InitializePlan(regex);
 
             return plan;
@@ -104,14 +104,14 @@ namespace RegExtract
         {
             ConstructorInfo[] constructors;
 
-            if (type.FullName.StartsWith("System.Nullable`"))
+            if (IsNullable(type))
             {
                 return ArityOfType(type.GetGenericArguments().Single());
             }
-            else if (type.FullName.StartsWith("System.Collections.Generic.List`"))
+            else if (IsList(type))
             {
                 var subtype = type.GetGenericArguments().Single();
-                if (subtype.FullName.StartsWith("System.Collections.Generic.List`"))
+                if (IsList(subtype))
                 {
                     return 1 + ArityOfType(subtype);
                 }
@@ -120,7 +120,7 @@ namespace RegExtract
                     return ArityOfType(subtype);
                 }
             }
-            else if (type.FullName.StartsWith("System.ValueTuple`"))
+            else if (IsTuple(type))
             {
                 return 1 + GetTupleArgumentsList(type).Sum(type => ArityOfType(type));
             }
@@ -142,7 +142,7 @@ namespace RegExtract
         {
             var typeArgs = type.GetGenericArguments();
 
-            if (type.FullName.StartsWith(VALUETUPLE_TYPENAME) && typeArgs.Length == 8)
+            if (IsTuple(type) && typeArgs.Length == 8)
             {
                 return typeArgs.Take(7).Concat(GetTupleArgumentsList(typeArgs[7])).ToArray();
             }

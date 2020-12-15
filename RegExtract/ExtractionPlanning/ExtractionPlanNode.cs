@@ -7,20 +7,141 @@ using System.Text.RegularExpressions;
 
 namespace RegExtract
 {
-    public record RootVirtualTupleExtractionPlanNode(string groupName, Type type, ExtractionPlanNode[] constructorNodes, ExtractionPlanNode[] propertyNodes): 
-        ExtractionPlanNode(groupName, type, constructorNodes, propertyNodes)
+    public record VirtualUnaryTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters):
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Execute(Match match, int captureStart, int captureLength)
         {
-            return constructorNodes.Single().Execute(match, captureStart, captureLength);
+            return constructorParams.Single().Execute(match, captureStart, captureLength);
         }
     }
 
-    public record ExtractionPlanNode(string groupName, Type type, ExtractionPlanNode[] constructorNodes, ExtractionPlanNode[] propertyNodes)
+    public record ListOfListsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        public object? Execute(Match match)
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
-            return Execute(match, match.Groups[groupName].Index, match.Groups[groupName].Length);
+            return constructorParams.Single().Execute(match, range.Index, range.Length);
+        }
+    }
+
+    public record TupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
+    {
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
+            return CreateGenericTuple(type, constructorParams.Select(i => i.Execute(match, range.Index, range.Length)));
+        }
+    }
+
+    public record ConstructorWithParamsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
+    {
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
+            var constructors = type.GetConstructors()
+                .Where(cons => cons.GetParameters().Length == constructorParams.Length);
+
+            var constructor = constructors.Single();
+
+            var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
+
+            return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
+        }
+    }
+
+    public record EnumNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
+    {
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            return Enum.Parse(type, range.Value);
+        }
+    }
+
+    public record StringConstructorNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
+    {
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
+            var constructor = type.GetConstructor(new[] { typeof(string) });
+        
+            return constructor.Invoke(new[] { range.Value });
+        }
+    }
+
+    public record StaticParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
+    {
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            type = IsList(type) ? type.GetGenericArguments().Single() : type; 
+            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
+            var parse = type.GetMethod("Parse",
+                            BindingFlags.Static | BindingFlags.Public,
+                            null,
+                            new Type[] { typeof(string) },
+                            null);
+
+                return parse.Invoke(null, new object[] { range.Value });
+            }
+        }
+
+    public record StringNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
+    {
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            return range.Value;
+        }
+    }
+
+    public record ExtractionPlanNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertyNodes)
+    {
+        internal static ExtractionPlanNode Bind(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
+        {
+            var innerType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            innerType = IsNullable(innerType) ? innerType.GetGenericArguments().Single() : innerType;
+
+            var multiConstructor = innerType.GetConstructors()
+                .Where(cons => cons.GetParameters().Length == constructorParams.Length);
+
+            var parse = innerType.GetMethod("Parse",
+                                        BindingFlags.Static | BindingFlags.Public,
+                                        null,
+                                        new Type[] { typeof(string) },
+                                        null);
+
+            var constructor = innerType.GetConstructor(new[] { typeof(string) });
+
+
+
+            if (IsList(innerType))
+                return new ListOfListsNode(groupName, type, constructorParams, propertySetters);
+            else if (IsTuple(innerType))
+                return new TupleNode(groupName, type, constructorParams, propertySetters);
+            else if (multiConstructor.Count() == 1)
+                return new ConstructorWithParamsNode(groupName, type, constructorParams, propertySetters);
+            else if (parse is not null)
+                return new StaticParseNode(groupName, type, constructorParams, propertySetters);
+            else if (constructor is not null)
+                return new StringConstructorNode(groupName, type, constructorParams, propertySetters);
+            else if (innerType.BaseType == typeof(Enum))
+                return new EnumNode(groupName, type, constructorParams, propertySetters);
+            else
+                return new StringNode(groupName, type, constructorParams, propertySetters);
+        }
+
+        internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            throw new InvalidOperationException();
         }
 
         internal virtual object? Execute(Match match, int captureStart, int captureLength)
@@ -45,7 +166,13 @@ namespace RegExtract
                 else
                 {
                     var lastRange = ranges.Last();
-                    result = RangeToType(match, innerType, lastRange);
+
+                    result = Construct(match, innerType, lastRange);
+
+                    foreach (var prop in propertyNodes)
+                    {
+                        result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
+                    }
                 }
             }
             else
@@ -54,7 +181,19 @@ namespace RegExtract
 
                 //var elementType = IsList(listType) ? listType.GetGenericArguments().Single() : listType;
 
-                var vals = ranges.Select(range => RangeToType(match, listType, range));
+                List<object?> vals = new();
+                
+                foreach (var range in ranges)
+                {
+                    var itemVal = Construct(match, listType, range);
+
+                    foreach (var prop in propertyNodes)
+                    {
+                        itemVal.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, range.Index, range.Length) });
+                    }
+
+                    vals.Add(itemVal);
+                }
 
                 MethodInfo CastMethod = typeof(Enumerable).GetMethod("Cast");
                 MethodInfo ToListMethod = typeof(Enumerable).GetMethod("ToList");
@@ -65,80 +204,19 @@ namespace RegExtract
                                             .Invoke(null, new object[] { castItems });
 
                 result = listout;
-
-            }
-
-            foreach (var prop in propertyNodes)
-            {
-                var lastRange = ranges.Last();
-                result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
             }
 
             return result;
         }
 
-        object? RangeToType(Match match, Type type, (string Value, int Index, int Length) range)
+        public object? Execute(Match match)
         {
-            object? result;
-            var constructors = type.GetConstructors()
-                .Where(cons => cons.GetParameters().Length == constructorNodes.Length);
-
-            if (IsNullable(type)) type = type.GetGenericArguments().Single();
-
-            if (type.FullName.StartsWith(VALUETUPLE_TYPENAME))
+            if (!match.Success)
             {
-                result = CreateGenericTuple(type, constructorNodes.Select(i => i.Execute(match, range.Index, range.Length)));
-            }
-            else if (constructors?.Count() == 1)
-            {
-                var constructor = constructors.Single();
-
-                var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
-
-                if (paramTypes.Count() != constructorNodes.Length)
-                    throw new ArgumentException($"Number of capture groups doesn't match constructor arity.");
-
-                result = constructor.Invoke(constructorNodes.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
-            }
-            else
-            {
-                result = StringToType(range.Value, type);
+                throw new ArgumentException("Regex didn't match.");
             }
 
-            return result;
-        }
-
-        protected object StringToType(string val, Type type)
-        {
-            if (type.FullName.StartsWith("System.Nullable`1"))
-            {
-                type = type.GetGenericArguments().Single();
-            }
-
-            var parse = type.GetMethod("Parse",
-                                        BindingFlags.Static | BindingFlags.Public,
-                                        null,
-                                        new Type[] { typeof(string) },
-                                        null);
-
-            if (parse is not null)
-            {
-                return parse.Invoke(null, new object[] { val });
-            }
-
-            var constructor = type.GetConstructor(new[] { typeof(string) });
-
-            if (constructor is not null)
-            {
-                return constructor.Invoke(new[] { val });
-            }
-
-            if (type.BaseType == typeof(Enum))
-            {
-                return Enum.Parse(type, val);
-            }
-
-            return val;
+            return Execute(match, match.Groups[groupName].Index, match.Groups[groupName].Length);
         }
 
         protected object CreateGenericTuple(Type tupleType, IEnumerable<object?> vals)
@@ -161,28 +239,26 @@ namespace RegExtract
             }
         }
 
-
-
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
         protected const string LIST_TYPENAME = "System.Collections.Generic.List`";
         protected const string NULLABLE_TYPENAME = "System.Nullable`";
 
-        protected bool IsList(Type type)
+        protected static bool IsList(Type type)
         {
             return type.FullName.StartsWith(LIST_TYPENAME);
         }
 
-        protected bool IsTuple(Type type)
+        protected static bool IsTuple(Type type)
         {
             return type.FullName.StartsWith(VALUETUPLE_TYPENAME);
         }
 
-        protected bool IsNullable(Type type)
+        protected static bool IsNullable(Type type)
         {
             return type.FullName.StartsWith(NULLABLE_TYPENAME);
         }
 
-        private IEnumerable<Capture> AsEnumerable(CaptureCollection cc)
+        protected static IEnumerable<Capture> AsEnumerable(CaptureCollection cc)
         {
             foreach (Capture c in cc)
             {

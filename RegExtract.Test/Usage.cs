@@ -271,7 +271,7 @@ $
         [Fact]
         public void nested_extraction_of_list()
         {
-            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<List<char>>>(@"(?:(\w)+\W?)+");
+            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<List<char>>>(@"(?:((\w)+) ?)+");
         }
 
         [Fact]
@@ -341,8 +341,8 @@ $
         [Fact]
         public void CreateTreePlan()
         {
-            var regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))");
-            var plan = ExtractionPlan<(string, (int?, int?)?, char, string)?>.CreatePlan(regex);
+            var regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
+            var plan = ExtractionPlan<((int?, int?)?, char, string)?>.CreatePlan(regex);
             object result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
 
             regex = new Regex(@"(?:((\w)+) ?)+");

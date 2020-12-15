@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace RegExtract
 {
-    public class FlatExtractionPlan<T> : ExtractionPlan<T>
+    public class ExtractionPlanner<T> : ExtractionPlan<T>
     {
         RegexCaptureGroupTree _tree;
         Stack<Type> _typeStack = new();
@@ -23,13 +23,13 @@ namespace RegExtract
         {
             if (!tree.children.Any())
             {
-                return new ExtractionPlanNode(tree.name, type, new ExtractionPlanNode[0], new ExtractionPlanNode[0]);
+                return ExtractionPlanNode.Bind(tree.name, type, new ExtractionPlanNode[0], new ExtractionPlanNode[0]);
             }
 
             // TODO: Really need to think this through, and think lists through in general. I'm pretty sure there are still subtle list bugs around.
             if ((ArityOfType(type) == 1 && !tree.NamedGroups.Any())|| (IsList(type) && IsList(type.GetGenericArguments().Single())))
             {
-                return new RootVirtualTupleExtractionPlanNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type).Item1 }, new ExtractionPlanNode[0]);
+                return new VirtualUnaryTupleNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type).Item1 }, new ExtractionPlanNode[0]);
             }
 
             return AssignTypesToTree_Recursive(tree, type).Item1;
@@ -37,7 +37,7 @@ namespace RegExtract
 
         (ExtractionPlanNode, RegexCaptureGroupNode[]) BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
         {
-            if (type.FullName.StartsWith(NULLABLE_TYPENAME))
+            if (IsNullable(type))
             {
                 type = type.GetGenericArguments().Single();
             }
@@ -54,11 +54,6 @@ namespace RegExtract
 
         (ExtractionPlanNode, RegexCaptureGroupNode[]) BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum)
         {
-            if (IsNullable(type))
-            {
-                type = type.GetGenericArguments().Single();
-            }
-
             if (IsList(type))
             {
                 type = type.GetGenericArguments().Single();
@@ -72,15 +67,29 @@ namespace RegExtract
             var constructors = type.GetConstructors()
                        .Where(cons => cons.GetParameters().Length != 0);
 
-            if (type.FullName.StartsWith(VALUETUPLE_TYPENAME))
+            if (IsTuple(type))
             {
-                type = GetTupleArgumentsList(type)[paramNum];
+                try
+                {
+                    type = GetTupleArgumentsList(type)[paramNum];
+                }
+                catch (IndexOutOfRangeException ex)
+                {
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for tuple {type.Name}");
+                }
             }
             else if (constructors?.Count() == 1)
             {
                 var constructor = constructors.Single();
 
-                type = constructor.GetParameters()[paramNum].ParameterType;
+                try
+                {
+                    type = constructor.GetParameters()[paramNum].ParameterType;
+                }
+                catch (IndexOutOfRangeException ex)
+                {
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for constructor {type.Name}");
+                }
             }
 
             return AssignTypesToTree_Recursive(tree, type);
@@ -115,7 +124,7 @@ namespace RegExtract
                 }
             }
 
-            return (new ExtractionPlanNode(tree.name, type, groups.ToArray(), namedgroups.ToArray()), queue.ToArray());
+            return (ExtractionPlanNode.Bind(tree.name, type, groups.ToArray(), namedgroups.ToArray()), queue.ToArray());
         }
 
     }
