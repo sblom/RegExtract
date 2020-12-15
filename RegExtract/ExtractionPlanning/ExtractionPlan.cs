@@ -11,13 +11,16 @@ namespace RegExtract
     {
         public ExtractionPlanNode Plan { get; protected set; }
 
-        protected ExtractionPlan() { }
+        protected ExtractionPlan()
+        {
+            Plan = new UninitializedNode();
+        }
 
         abstract internal void InitializePlan(Regex regex);
 
         public T Extract(Match match)
         {
-            return (T)Plan.Execute(match);
+            return (T)Plan.Execute(match)!;
         }
 
         static public ExtractionPlan<T> CreatePlan(Regex regex, RegExtractOptions reOptions= RegExtractOptions.None)

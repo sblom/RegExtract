@@ -311,6 +311,11 @@ $
             Assert.IsType<char>(h);
             Assert.IsType<string>(i);
 
+                 var (verb, year) =
+              "Party like it's 1999"
+               .Extract<(string, int)>
+            (@"(\w+) like it's (\d)+");
+
             Assert.Equal(1, a);
             Assert.Equal('2', b);
             Assert.Equal("3", c);
@@ -343,7 +348,7 @@ $
         {
             var regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
             var plan = ExtractionPlan<((int?, int?)?, char, string)?>.CreatePlan(regex);
-            object result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
+            object? result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
 
             regex = new Regex(@"(?:((\w)+) ?)+");
             var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex);

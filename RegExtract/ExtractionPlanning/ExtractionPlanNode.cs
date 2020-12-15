@@ -7,6 +7,15 @@ using System.Text.RegularExpressions;
 
 namespace RegExtract
 {
+    public record UninitializedNode():
+        ExtractionPlanNode("", typeof(void), new ExtractionPlanNode[0], new ExtractionPlanNode[0])
+    {
+        internal override object? Execute(Match match, int captureStart, int captureLength)
+        {
+            throw new InvalidOperationException("Extraction plan was not initialized before execution.");
+        }
+    }
+
     public record VirtualUnaryTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters):
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
@@ -246,9 +255,12 @@ namespace RegExtract
 
                     result = Construct(match, innerType, lastRange);
 
-                    foreach (var prop in propertyNodes)
+                    if (result is not null)
                     {
-                        result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
+                        foreach (var prop in propertyNodes)
+                        {
+                            result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
+                        }
                     }
                 }
             }
@@ -256,17 +268,18 @@ namespace RegExtract
             {
                 var listType = type.GetGenericArguments().Single();
 
-                //var elementType = IsList(listType) ? listType.GetGenericArguments().Single() : listType;
-
                 List<object?> vals = new();
                 
                 foreach (var range in ranges)
                 {
                     var itemVal = Construct(match, listType, range);
 
-                    foreach (var prop in propertyNodes)
+                    if (itemVal is not null)
                     {
-                        itemVal.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, range.Index, range.Length) });
+                        foreach (var prop in propertyNodes)
+                        {
+                            itemVal.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, range.Index, range.Length) });
+                        }
                     }
 
                     vals.Add(itemVal);

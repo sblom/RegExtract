@@ -8,7 +8,7 @@ namespace RegExtract
 {
     public class ExtractionPlanner<T> : ExtractionPlan<T>
     {
-        RegexCaptureGroupTree _tree;
+        RegexCaptureGroupTree? _tree;
         Stack<Type> _typeStack = new();
 
         internal override void InitializePlan(Regex regex)
@@ -77,7 +77,7 @@ namespace RegExtract
                 {
                     type = GetTupleArgumentsList(type)[paramNum];
                 }
-                catch (IndexOutOfRangeException ex)
+                catch (IndexOutOfRangeException)
                 {
                     throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for tuple {type.FullName}");
                 }
@@ -90,7 +90,7 @@ namespace RegExtract
                 {
                     type = constructor.GetParameters()[paramNum].ParameterType;
                 }
-                catch (IndexOutOfRangeException ex)
+                catch (IndexOutOfRangeException)
                 {
                     throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for constructor {type.FullName}");
                 }
