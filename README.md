@@ -1,6 +1,11 @@
+# RegExtract
+Quick and dirty idiomatic C# line parser that emits typed ValueTuples.
+
+[![NuGet](https://img.shields.io/nuget/v/RegExtract.svg?style=flat)](https://www.nuget.org/packages/RegExtract/)
+
 # Table of Contents
-- [Table of Contents](#table-of-contents)
 - [RegExtract](#regextract)
+- [Table of Contents](#table-of-contents)
   - [Usage Examples](#usage-examples)
     - [Date from email header](#date-from-email-header)
     - [List of words](#list-of-words)
@@ -8,9 +13,6 @@
     - [Parsing fields](#parsing-fields)
     - [Enums and Flags](#enums-and-flags)
   - [History](#history)
-
-# RegExtract
-Quick and dirty idiomatic C# line parser that emits typed ValueTuples.
 
 ## Usage Examples
 ### Date from email header
