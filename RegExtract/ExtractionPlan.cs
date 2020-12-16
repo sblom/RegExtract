@@ -5,6 +5,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
+using RegExtract.ExtractionPlanNodeTypes;
+
 namespace RegExtract
 {
     public class ExtractionPlan<T>
