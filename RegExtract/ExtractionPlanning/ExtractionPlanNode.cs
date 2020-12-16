@@ -180,6 +180,45 @@ namespace RegExtract
 
     public record ExtractionPlanNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertyNodes)
     {
+        public string ShowPlanTree()
+        {
+            StringBuilder builder = new();
+
+            builder.Append(this.GetType().Name).Append("<").Append(string.Join(",",type.GetGenericArguments().Select(t => FriendlyTypeName(t)))).Append(">[").Append(groupName).Append("] (");
+            if (constructorParams.Any())
+            {
+                builder.Append("\n");
+                builder.Append(string.Join(",\n", constructorParams.Select(param => "\t" + param.ShowPlanTree().Replace("\n", "\n\t"))));
+                builder.Append("\n)");
+            }
+            else
+            {
+                builder.Append(")");
+            }
+            if (propertyNodes.Any())
+            {
+                builder.Append(" {\n");
+                builder.Append(string.Join(",\n", constructorParams.Select(param => "\t" + param.groupName + " = " + param.ShowPlanTree().Replace("\n", "\n\t"))));
+                builder.Append("\n}");
+            }
+
+            return builder.ToString();
+        }
+
+        string FriendlyTypeName(Type type)
+        {
+            if (IsNullable(type)) return FriendlyTypeName(type.GetGenericArguments().Single()) + "?";
+
+            var args = type.GetGenericArguments();
+
+            if (args.Any())
+            {
+                return type.Name.Split('`')[0] + "<" + String.Join(",", args.Select(arg => FriendlyTypeName(arg))) + ">";
+            }
+
+            else return type.Name;
+        }
+
         internal static ExtractionPlanNode Bind(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
             var innerType = IsList(type) ? type.GetGenericArguments().Single() : type;
