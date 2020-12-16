@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace RegExtract
 {
-    public record UninitializedNode():
+    internal record UninitializedNode():
         ExtractionPlanNode("", typeof(void), new ExtractionPlanNode[0], new ExtractionPlanNode[0])
     {
         internal override object? Execute(Match match, int captureStart, int captureLength)
@@ -16,7 +16,7 @@ namespace RegExtract
         }
     }
 
-    public record VirtualUnaryTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters):
+    internal record VirtualUnaryTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters):
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Execute(Match match, int captureStart, int captureLength)
@@ -30,7 +30,7 @@ namespace RegExtract
         }
     }
 
-    public record ListOfListsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record ListOfListsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -47,7 +47,7 @@ namespace RegExtract
         }
     }
 
-    public record TupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record TupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -69,7 +69,7 @@ namespace RegExtract
         }
     }
 
-    public record ConstructorWithParamsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record ConstructorNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -94,13 +94,13 @@ namespace RegExtract
                 .Where(cons => cons.GetParameters().Length == constructorParams.Length);
 
             if (constructors.Count() != 1)
-                throw new InvalidOperationException($"{nameof(ConstructorWithParamsNode)} has wrong number of constructor params.");
+                throw new InvalidOperationException($"{nameof(ConstructorNode)} has wrong number of constructor params.");
 
             base.Validate();
         }
     }
 
-    public record EnumNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record EnumNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -109,7 +109,7 @@ namespace RegExtract
         }
     }
 
-    public record StringConstructorNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record StringConstructorNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -134,7 +134,7 @@ namespace RegExtract
         }
     }
 
-    public record StaticParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record StaticDotParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -163,13 +163,13 @@ namespace RegExtract
                             null);
 
             if (parse is null)
-                throw new InvalidOperationException($"{nameof(StaticParseNode)} has wrong type or constructor params.");
+                throw new InvalidOperationException($"{nameof(StaticDotParseNode)} has wrong type or constructor params.");
 
             base.Validate();
         }
     }
 
-    public record StringNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record StringCastNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -184,7 +184,7 @@ namespace RegExtract
         {
             StringBuilder builder = new();
 
-            builder.Append(this.GetType().Name).Append("<").Append(string.Join(",",FriendlyTypeName(type))).Append(">[").Append(int.TryParse(groupName, out var _) ? groupName : "\"" + groupName + "\"").Append("] (");
+            builder.Append(this.GetType().Name.Replace("Node","")).Append("<").Append(string.Join(",",FriendlyTypeName(type))).Append(">[").Append(int.TryParse(groupName, out var _) ? groupName : "\"" + groupName + "\"").Append("] (");
             if (constructorParams.Any())
             {
                 builder.Append("\n");
@@ -266,15 +266,15 @@ namespace RegExtract
             else if (IsTuple(innerType))
                 node = new TupleNode(groupName, type, constructorParams, propertySetters);
             else if (multiConstructor.Count() == 1)
-                node = new ConstructorWithParamsNode(groupName, type, constructorParams, propertySetters);
+                node = new ConstructorNode(groupName, type, constructorParams, propertySetters);
             else if (parse is not null)
-                node = new StaticParseNode(groupName, type, constructorParams, propertySetters);
+                node = new StaticDotParseNode(groupName, type, constructorParams, propertySetters);
             else if (constructor is not null)
                 node = new StringConstructorNode(groupName, type, constructorParams, propertySetters);
             else if (innerType.BaseType == typeof(Enum))
                 node = new EnumNode(groupName, type, constructorParams, propertySetters);
             else
-                node = new StringNode(groupName, type, constructorParams, propertySetters);
+                node = new StringCastNode(groupName, type, constructorParams, propertySetters);
 
             node.Validate();
 
