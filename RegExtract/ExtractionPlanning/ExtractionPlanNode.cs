@@ -184,7 +184,7 @@ namespace RegExtract
         {
             StringBuilder builder = new();
 
-            builder.Append(this.GetType().Name).Append("<").Append(string.Join(",",type.GetGenericArguments().Select(t => FriendlyTypeName(t)))).Append(">[").Append(groupName).Append("] (");
+            builder.Append(this.GetType().Name).Append("<").Append(string.Join(",",FriendlyTypeName(type))).Append(">[").Append(int.TryParse(groupName, out var _) ? groupName : "\"" + groupName + "\"").Append("] (");
             if (constructorParams.Any())
             {
                 builder.Append("\n");
@@ -198,7 +198,7 @@ namespace RegExtract
             if (propertyNodes.Any())
             {
                 builder.Append(" {\n");
-                builder.Append(string.Join(",\n", constructorParams.Select(param => "\t" + param.groupName + " = " + param.ShowPlanTree().Replace("\n", "\n\t"))));
+                builder.Append(string.Join(",\n", propertyNodes.Select(param => "\t" + param.groupName + " = " + param.ShowPlanTree().Replace("\n", "\n\t"))));
                 builder.Append("\n}");
             }
 
@@ -207,9 +207,31 @@ namespace RegExtract
 
         string FriendlyTypeName(Type type)
         {
+            var keyword = type.Name switch
+            {
+                "Byte" => "byte",
+                "SByte" => "sbyte",
+                "Float" => "float",
+                "Double" => "double",
+                "Decimal" => "decimal",
+                "Int16" => "short",
+                "UInt16" => "ushort",
+                "Int32" => "int",
+                "UInt32" => "uint",
+                "Int64" => "long",
+                "UInt64" => "ulong",
+                "Char" => "char",
+                "String" => "string",
+                _ => null
+            };
+
+            if (keyword is not null) return keyword;
+
             if (IsNullable(type)) return FriendlyTypeName(type.GetGenericArguments().Single()) + "?";
 
             var args = type.GetGenericArguments();
+
+            if (IsTuple(type)) return "(" + String.Join(",", args.Select(arg => FriendlyTypeName(arg))) + ")";
 
             if (args.Any())
             {
