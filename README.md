@@ -1,7 +1,9 @@
 # RegExtract
 Quick and dirty idiomatic C# line parser that emits typed ValueTuples.
 
-[![NuGet](https://img.shields.io/nuget/v/RegExtract.svg?style=flat)](https://www.nuget.org/packages/RegExtract/)
+[![NuGet](https://img.shields.io/nuget/v/RegExtract.svg)](https://www.nuget.org/packages/RegExtract/)
+[![Downloads](https://img.shields.io/nuget/dt/RegExtract.svg)](https://www.nuget.org/packages/RegExtract/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 # Table of Contents
 - [RegExtract](#regextract)
