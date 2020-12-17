@@ -9,7 +9,7 @@ using RegExtract.ExtractionPlanNodeTypes;
 
 namespace RegExtract
 {
-    public class ExtractionPlan<T>
+    public class ExtractionPlan<T>: IFormattable
     {
         public ExtractionPlanNode Plan { get; protected set; }
         RegexCaptureGroupTree? _tree;
@@ -276,6 +276,20 @@ namespace RegExtract
             }
 
             return (ExtractionPlanNode.Bind(tree.name, type, groups.ToArray(), namedgroups.ToArray()), queue.ToArray());
+        }
+
+        public object ToDump() => this;
+
+        public override string ToString() =>
+            Plan.ShowPlanTree().Replace("\t", "").Replace("\n", "");
+
+        public string ToString(string? format) => ToString(format, null);
+
+        public string ToString(string? format, IFormatProvider? formatProvider)
+        {
+            if (format == "x")
+                return Plan.ShowPlanTree();
+            else return Plan.ShowPlanTree().Replace("\t", "").Replace("\n", "");
         }
     }
 }

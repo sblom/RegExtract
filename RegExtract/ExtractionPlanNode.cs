@@ -94,15 +94,15 @@ namespace RegExtract
             if (IsList(innerType))
                 node = new ListOfListsNode(groupName, type, constructorParams, propertySetters);
             else if (IsTuple(innerType))
-                node = new TupleNode(groupName, type, constructorParams, propertySetters);
+                node = new ConstructTupleNode(groupName, type, constructorParams, propertySetters);
             else if (multiConstructor.Count() == 1)
                 node = new ConstructorNode(groupName, type, constructorParams, propertySetters);
             else if (parse is not null)
-                node = new StaticDotParseNode(groupName, type, constructorParams, propertySetters);
+                node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
             else if (constructor is not null)
                 node = new StringConstructorNode(groupName, type, constructorParams, propertySetters);
             else if (innerType.BaseType == typeof(Enum))
-                node = new EnumNode(groupName, type, constructorParams, propertySetters);
+                node = new EnumParseNode(groupName, type, constructorParams, propertySetters);
             else
                 node = new StringCastNode(groupName, type, constructorParams, propertySetters);
 
@@ -118,7 +118,7 @@ namespace RegExtract
 
         internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
-            throw new InvalidOperationException();
+            throw new InvalidOperationException("Can't construct a node based on base ExtractionPlanNode type.");
         }
 
         internal virtual object? Execute(Match match, int captureStart, int captureLength)

@@ -47,7 +47,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
         }
     }
 
-    internal record TupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record ConstructTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -100,7 +100,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
         }
     }
 
-    internal record EnumNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record EnumParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -134,7 +134,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
         }
     }
 
-    internal record StaticDotParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record StaticParseMethodNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
@@ -163,7 +163,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
                             null);
 
             if (parse is null)
-                throw new InvalidOperationException($"{nameof(StaticDotParseNode)} has wrong type or constructor params.");
+                throw new InvalidOperationException($"{nameof(StaticParseMethodNode)} has wrong type or constructor params.");
 
             base.Validate();
         }
