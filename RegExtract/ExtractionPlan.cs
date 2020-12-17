@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 using RegExtract.ExtractionPlanNodeTypes;
+using RegExtract.RegexTools;
 
 namespace RegExtract
 {
