@@ -211,14 +211,6 @@ namespace RegExtract.RegexTools
                 var solo = $"{line}{tag}";
                 results = new[] { solo };
 
-                if (Tree != tree)
-                {
-                    pad = new char[solo.Length];
-                    for (int j = 0; j < pad.Length; j++) pad[j] = '-';
-                    pad[0] = pad[pad.Length - 1] = '↓';
-                    results = new[] { string.Join("",pad), solo  };
-                }
-
                 return results;
             }
             else
@@ -276,7 +268,8 @@ namespace RegExtract.RegexTools
                 for (int i = 0; i < blocks.Length; i++)
                 {
                     pad = new char[blocks[i][0].Length];
-                    for (int j = 0; j < pad.Length; j++) pad[j] = ' ';
+                    for (int j = 0; j < pad.Length; j++) pad[j] = '-';
+                    pad[0] = pad[pad.Length - 1] = '↓';
                     topline += string.Join("", pad);
                     var subleft = tree.children[i].substring.range.start + tree.children[i].substring.range.length;
                     topline += tree.substring.text.Substring(subleft - left, i == blocks.Length - 1 ? right - subleft : tree.children[i + 1].substring.range.start - subleft);
@@ -286,14 +279,6 @@ namespace RegExtract.RegexTools
                 for (int j = 0; j < pad.Length; j++) pad[j] = ' ';
 
                 results = new[] { $"{topline}{tag}" }.Concat(results.Select(result => result + string.Join("", pad))).ToArray();
-
-                if (tree != Tree)
-                {
-                    pad = new char[results[0].Length];
-                    for (int j = 0; j < pad.Length; j++) pad[j] = '-';
-                    pad[0] = pad[pad.Length - 1] = '↓';
-                    results = new[] { string.Join("", pad) }.Concat(results).ToArray();
-                }
 
                 return results;
             }
