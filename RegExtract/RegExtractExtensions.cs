@@ -73,8 +73,7 @@ namespace RegExtract
 
         public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, ExtractionPlan<T> plan)
         {
-            // Can include RegExtractOptions once ExtractionPlan uses it
-            return Extract<T>(str, plan.Regex);
+            return str.Select(plan.Extract);
         }
 
         public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, RegExtractOptions options = RegExtractOptions.None)
