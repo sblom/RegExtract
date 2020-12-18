@@ -289,7 +289,7 @@ namespace RegExtract
         public string ToString(string? format, IFormatProvider? formatProvider)
         {
             if (format == "x")
-                return Plan.ShowPlanTree();
+                return Plan.ShowPlanTree() + "\n\n" + _tree.TreeViz();
             else return Plan.ShowPlanTree().Replace("\t", "").Replace("\n", "");
         }
     }
