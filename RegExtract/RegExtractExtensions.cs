@@ -35,26 +35,30 @@ namespace RegExtract
             return (T)plan.Extract(match);
         }
 
-        public static T? Extract<T>(this string str, Regex rx, Match match, RegExtractOptions options = RegExtractOptions.None)
+        public static T? Extract<T>(this string str, ExtractionPlan<T> plan)
         {
-            var plan = ExtractionPlan<T>.CreatePlan(rx);
-            return (T)plan.Extract(match);
+            return plan.Extract(str);
         }
 
         public static T? Extract<T>(this string str, RegExtractOptions options = RegExtractOptions.None)
         {
-            var field = typeof(T).GetField("REGEXTRACT_REGEX_PATTERN", BindingFlags.Public | BindingFlags.Static);
+            var rx = GetRegexFromType(typeof(T));   
+
+            return Extract<T>(str, rx, options);
+        }
+
+        static Regex GetRegexFromType(Type type)
+        {
+            var field = type.GetField("REGEXTRACT_REGEX_PATTERN", BindingFlags.Public | BindingFlags.Static);
             if (field is not { IsLiteral: true, IsInitOnly: false })
                 throw new ArgumentException("No string, Regex, or Match provided, and extraction type doesn't have public const string REGEXTRACT_REGEX_PATTERN.");
             string rxPattern = (string)field.GetValue(null);
 
             RegexOptions rxOptions = RegexOptions.None;
-            field = typeof(T).GetField("REGEXTRACT_REGEX_OPTIONS", BindingFlags.Public | BindingFlags.Static);
+            field = type.GetField("REGEXTRACT_REGEX_OPTIONS", BindingFlags.Public | BindingFlags.Static);
             if (field is { IsLiteral: true, IsInitOnly: false }) rxOptions = (RegexOptions)field.GetValue(null);
 
-            var match = Regex.Match(str, rxPattern, rxOptions);
-
-            return Extract<T>(str, new Regex(rxPattern), match, options);
+            return new Regex(rxPattern, rxOptions);
         }
     }
 }

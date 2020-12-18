@@ -21,6 +21,11 @@ namespace RegExtract
             Plan = new UninitializedNode();
         }
 
+        public T Extract(string str)
+        {
+            return (T)Plan.Execute(_tree?.Regex.Match(str) ?? Regex.Match("",""))!;
+        }
+
         public T Extract(Match match)
         {
             return (T)Plan.Execute(match)!;
@@ -175,7 +180,7 @@ namespace RegExtract
             }
 
             // TODO: Really need to think this through, and think lists through in general. I'm pretty sure there are still subtle list bugs around.
-            if ((ArityOfType(type) == 1 && !tree.NamedGroups.Any()) || (IsList(type) && IsList(type.GetGenericArguments().Single())))
+            if ((ArityOfType(type) == 1 && !tree.NamedGroups.Any()) || IsList(type))
             {
                 return new VirtualUnaryTupleNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type).node }, new ExtractionPlanNode[0]);
             }
@@ -289,7 +294,7 @@ namespace RegExtract
         public string ToString(string? format, IFormatProvider? formatProvider)
         {
             if (format == "x")
-                return Plan.ShowPlanTree() + "\n\n" + _tree.TreeViz();
+                return Plan.ShowPlanTree() + "\n\n" + _tree?.TreeViz() ?? "";
             else return Plan.ShowPlanTree().Replace("\t", "").Replace("\n", "");
         }
     }
