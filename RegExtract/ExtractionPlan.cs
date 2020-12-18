@@ -284,6 +284,8 @@ namespace RegExtract
             return (ExtractionPlanNode.Bind(tree.name, type, groups.ToArray(), namedgroups.ToArray()), queue.ToArray());
         }
 
+        public Regex Regex => _tree.Regex;
+
         public object ToDump() => this;
 
         public override string ToString() =>

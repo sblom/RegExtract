@@ -60,5 +60,33 @@ namespace RegExtract
 
             return new Regex(rxPattern, rxOptions);
         }
+        
+        public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, string rx, RegExtractOptions options = RegExtractOptions.None)
+        {
+            return Extract<T>(str, rx, RegexOptions.None, options);
+        }
+
+        public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, string rx, RegexOptions rxOptions, RegExtractOptions options = RegExtractOptions.None)
+        {
+            return Extract<T>(str, new Regex(rx, rxOptions), options);
+        }
+
+        public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, ExtractionPlan<T> plan)
+        {
+            // Can include RegExtractOptions once ExtractionPlan uses it
+            return Extract<T>(str, plan.Regex);
+        }
+
+        public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, RegExtractOptions options = RegExtractOptions.None)
+        {
+            var rx = GetRegexFromType(typeof(T));
+            return Extract<T>(str, rx, options);
+        }
+        
+        public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, Regex rx, RegExtractOptions options = RegExtractOptions.None)
+        {
+            var plan = ExtractionPlan<T>.CreatePlan(rx, options);
+            return str.Select(s => plan.Extract(rx.Match(s)));
+        }
     }
 }
