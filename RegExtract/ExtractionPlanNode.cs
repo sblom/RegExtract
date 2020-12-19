@@ -79,13 +79,13 @@ namespace RegExtract
             var multiConstructor = innerType.GetConstructors()
                 .Where(cons => cons.GetParameters().Length == constructorParams.Length);
 
-            var parse = innerType.GetMethod("Parse",
+            var staticParseMethod = innerType.GetMethod("Parse",
                                         BindingFlags.Static | BindingFlags.Public,
                                         null,
                                         new Type[] { typeof(string) },
                                         null);
 
-            var constructor = innerType.GetConstructor(new[] { typeof(string) });
+            var stringConstructor = innerType.GetConstructor(new[] { typeof(string) });
 
 
 
@@ -95,11 +95,11 @@ namespace RegExtract
                 node = new ListOfListsNode(groupName, type, constructorParams, propertySetters);
             else if (IsTuple(innerType))
                 node = new ConstructTupleNode(groupName, type, constructorParams, propertySetters);
-            else if (multiConstructor.Count() == 1)
+            else if (multiConstructor.Count() == 1 && (constructorParams.Any() || propertySetters.Any()))
                 node = new ConstructorNode(groupName, type, constructorParams, propertySetters);
-            else if (parse is not null)
+            else if (staticParseMethod is not null)
                 node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
-            else if (constructor is not null)
+            else if (stringConstructor is not null)
                 node = new StringConstructorNode(groupName, type, constructorParams, propertySetters);
             else if (innerType.BaseType == typeof(Enum))
                 node = new EnumParseNode(groupName, type, constructorParams, propertySetters);

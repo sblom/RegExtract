@@ -251,7 +251,7 @@ $
         [Fact]
         public void can_extract_to_string_constructor()
         {
-            "https://www.google.com/".Extract<Uri>(".*");
+            var result = "https://www.google.com/ 12345".Extract<(Uri,int)>(@"(.*) (\d+)");
         }
 
         [Fact]
@@ -360,6 +360,30 @@ $
 
             result = plan3.Extract(regex.Match("2-12 c: abcdefgji"));
         }
+
+        [Fact]
+        public void can_create_polymorphic_parse_plan()
+        {
+            var plan = ExtractionPlan<instr>.CreatePlan(new Regex(@"(.*)"));
+            var results = plan.Extract("mask = lkjasdf");
+        }
+
+        record instr()
+        {
+            public static instr Parse(string str)
+            {
+                if (str.StartsWith("mask"))
+                {
+                    return str.Extract<maskinstr>(@"mask = (.+)");
+                }
+                else
+                {
+                    return str.Extract<meminstr>(@"mem\[(\d+)] = (\d+)");
+                }
+            }
+        }
+        record maskinstr(string mask) : instr;
+        record meminstr(long loc, long val) : instr;
     }
 }
 

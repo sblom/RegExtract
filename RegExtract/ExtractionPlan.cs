@@ -105,13 +105,6 @@ namespace RegExtract
                 return true;
             }
 
-            var constructor = type.GetConstructor(new[] { typeof(string) });
-
-            if (constructor is not null)
-            {
-                return true;
-            }
-
             if (type.BaseType == typeof(Enum))
             {
                 return true;
