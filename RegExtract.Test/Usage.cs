@@ -360,6 +360,8 @@ $
             //var plan = RegexExtractionPlan.CreatePlan<List<List<char>>>(@"(?:((\w)+) ?)+");
             //var result = plan.Execute(Regex.Match("The quick brown fox jumps over the lazy dog", @"(?:((\w)+) ?)+"));
 
+            var regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))");
+            var plan = ExtractionPlan<List<(string, (int?, int?)?, char, string)?>>.CreatePlan(regex);
         }
 
         [Fact]

@@ -133,7 +133,8 @@ namespace RegExtract
 
         private ExtractionPlanNode AssignTypesToTree_0(RegexCaptureGroupNode tree, Type type)
         {
-            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             if (!tree.children.Any())
             {
@@ -210,6 +211,9 @@ namespace RegExtract
 
         private ExtractionPlanNode AssignTypesToTree_Recursive(RegexCaptureGroupNode tree, Type type, Stack<RegexCaptureGroupNode>? stack = null)
         {
+            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
+
             List<ExtractionPlanNode> groups = new();
             List<ExtractionPlanNode> namedgroups = new();
 
@@ -225,7 +229,7 @@ namespace RegExtract
                 }
                 return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
             }
-            else if (IsTuple(type) && GetTupleArgumentsList(type).Count() > tree.children.Where(child => int.TryParse(child.name, out var _)).Count())
+            else if (IsTuple(unwrappedType) && GetTupleArgumentsList(unwrappedType).Count() > tree.children.Where(child => int.TryParse(child.name, out var _)).Count())
             {
                 stack = new Stack<RegexCaptureGroupNode>(tree.children.Reverse());
 
