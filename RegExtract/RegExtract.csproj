@@ -15,7 +15,7 @@ RegExtract takes a string and a regular expression template and deserializes to 
 
 See more docs at project page: https://github.com/sblom/RegExtract
 </Description>
-    <Version>1.0.15</Version>
+    <Version>1.0.16</Version>
     <Authors>Scott Blomquist</Authors>
     <Copyright>Copyright © Scott Blomquist. All rights reserved.</Copyright>
     <Company />
