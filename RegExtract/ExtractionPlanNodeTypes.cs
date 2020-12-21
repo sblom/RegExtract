@@ -88,7 +88,8 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             var constructors = unwrappedType.GetConstructors()
                 .Where(cons => cons.GetParameters().Length == constructorParams.Length);

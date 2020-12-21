@@ -97,6 +97,35 @@ namespace RegExtract
                 node = new ConstructTupleNode(groupName, type, constructorParams, propertySetters);
             else if (multiConstructor.Count() == 1 && (constructorParams.Any() || propertySetters.Any()))
                 node = new ConstructorNode(groupName, type, constructorParams, propertySetters);
+            else
+                throw new ArgumentException("Couldn't find appropriate constructor for type.");
+
+            node.Validate();
+
+            return node;
+        }
+
+        internal static ExtractionPlanNode BindLeaf(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
+        {
+            var innerType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            innerType = IsNullable(innerType) ? innerType.GetGenericArguments().Single() : innerType;
+
+            var staticParseMethod = innerType.GetMethod("Parse",
+                                        BindingFlags.Static | BindingFlags.Public,
+                                        null,
+                                        new Type[] { typeof(string) },
+                                        null);
+
+            var stringConstructor = innerType.GetConstructor(new[] { typeof(string) });
+
+
+
+            ExtractionPlanNode node;
+
+            if (IsList(innerType))
+                throw new ArgumentException("List of lists in type cannot be bound to leaf of regex capture group tree.");
+            else if (IsTuple(innerType))
+                throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree.");
             else if (staticParseMethod is not null)
                 node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
             else if (stringConstructor is not null)
@@ -110,6 +139,7 @@ namespace RegExtract
 
             return node;
         }
+
 
         internal virtual void Validate()
         {

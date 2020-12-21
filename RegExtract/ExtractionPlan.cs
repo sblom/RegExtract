@@ -67,6 +67,14 @@ namespace RegExtract
             return type.FullName.StartsWith(NULLABLE_TYPENAME);
         }
 
+        private bool IsContainerOfSize(Type type, int numParams)
+        {
+            var constructors = type.GetConstructors()
+                .Where(cons => cons.GetParameters().Length == numParams);
+
+            return constructors.Count() == 1;
+        }
+
         protected bool IsDirectlyConstructable(Type type)
         {
             if (type == typeof(string))
@@ -77,16 +85,12 @@ namespace RegExtract
             if (IsList(type))
             {
                 type = type.GetGenericArguments().Single();
+                return !IsList(type) && IsDirectlyConstructable(type);
             }
 
             if (IsNullable(type))
             {
                 type = type.GetGenericArguments().Single();
-            }
-
-            if (IsList(type))
-            {
-                return false;
             }
 
             if (IsTuple(type))
@@ -113,44 +117,6 @@ namespace RegExtract
             return false;
         }
 
-        protected int ArityOfType(Type type, bool recursive = false)
-        {
-            ConstructorInfo[] constructors;
-
-            if (IsNullable(type))
-            {
-                return ArityOfType(type.GetGenericArguments().Single());
-            }
-            else if (IsList(type))
-            {
-                var subtype = type.GetGenericArguments().Single();
-                if (IsList(subtype))
-                {
-                    return 1 + ArityOfType(subtype);
-                }
-                else
-                {
-                    return ArityOfType(subtype);
-                }
-            }
-            else if (IsTuple(type))
-            {
-                return 1 + GetTupleArgumentsList(type).Sum(type => ArityOfType(type));
-            }
-            else
-            {
-                constructors = type.GetConstructors().Where(cons => cons.GetParameters().Length != 0).ToArray();
-                if (constructors.Length == 1)
-                {
-                    return 1 + constructors[0].GetParameters().Sum(type => ArityOfType(type.ParameterType));
-                }
-                else
-                {
-                    return 1;
-                }
-            }
-        }
-
         protected Type[] GetTupleArgumentsList(Type type)
         {
             var typeArgs = type.GetGenericArguments();
@@ -167,25 +133,22 @@ namespace RegExtract
 
         private ExtractionPlanNode AssignTypesToTree_0(RegexCaptureGroupNode tree, Type type)
         {
+            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+
             if (!tree.children.Any())
             {
-                return ExtractionPlanNode.Bind(tree.name, type, new ExtractionPlanNode[0], new ExtractionPlanNode[0]);
+                return ExtractionPlanNode.BindLeaf("0", type, new ExtractionPlanNode[0], new ExtractionPlanNode[0]);
             }
 
-            // TODO: Really need to think this through, and think lists through in general. I'm pretty sure there are still subtle list bugs around.
-            if ((ArityOfType(type) == 1 && !tree.NamedGroups.Any()) || IsList(type))
+            if (!IsTuple(unwrappedType) && !IsContainerOfSize(unwrappedType, tree.NumberedGroups.Count()) && !tree.NamedGroups.Any())
             {
-                return new VirtualUnaryTupleNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type).node }, new ExtractionPlanNode[0]);
+                return new VirtualUnaryTupleNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
             }
 
-            var (plan, remainder) = AssignTypesToTree_Recursive(tree, type);
-
-            if (remainder.Any()) throw new ArgumentException("Provided type did not consume all regular expression captures.");
-
-            return plan;
+            return AssignTypesToTree_Recursive(tree, type);
         }
 
-        (ExtractionPlanNode node, RegexCaptureGroupNode[] leftoverSubtree) BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
+        ExtractionPlanNode BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
         {
             if (IsNullable(type))
             {
@@ -202,7 +165,7 @@ namespace RegExtract
             return AssignTypesToTree_Recursive(tree, type);
         }
 
-        (ExtractionPlanNode node, RegexCaptureGroupNode[] leftoverSubtree) BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum)
+        ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum, int paramCount, Stack<RegexCaptureGroupNode>? stack)
         {
             if (IsList(type))
             {
@@ -215,7 +178,7 @@ namespace RegExtract
             }
 
             var constructors = type.GetConstructors()
-                       .Where(cons => cons.GetParameters().Length != 0);
+                       .Where(cons => cons.GetParameters().Length == paramCount);
 
             if (IsTuple(type))
             {
@@ -242,39 +205,64 @@ namespace RegExtract
                 }
             }
 
-            return AssignTypesToTree_Recursive(tree, type);
+            return AssignTypesToTree_Recursive(tree, type, stack);
         }
 
-        private (ExtractionPlanNode node, RegexCaptureGroupNode[] leftoverSubtree) AssignTypesToTree_Recursive(RegexCaptureGroupNode tree, Type type)
+        private ExtractionPlanNode AssignTypesToTree_Recursive(RegexCaptureGroupNode tree, Type type, Stack<RegexCaptureGroupNode>? stack = null)
         {
             List<ExtractionPlanNode> groups = new();
             List<ExtractionPlanNode> namedgroups = new();
 
-            Queue<RegexCaptureGroupNode> queue = new Queue<RegexCaptureGroupNode>(tree.children);
-
-            if (!IsDirectlyConstructable(type))
+            if (!tree.children.Any() || IsDirectlyConstructable(type))
             {
-                while (queue.Any())
+                if (tree.children.Any())
                 {
-                    RegexCaptureGroupNode node = queue.Dequeue();
+                    if (stack == null) throw new ArgumentException("Leftover branch in Rx subtree but no tuple with extra slots to receive it.");
+                    foreach (var child in tree.children.Reverse())
+                    {
+                        stack.Push(child);
+                    }
+                }
+                return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
+            }
+            else if (IsTuple(type) && GetTupleArgumentsList(type).Count() > tree.children.Where(child => int.TryParse(child.name, out var _)).Count())
+            {
+                stack = new Stack<RegexCaptureGroupNode>(tree.children.Reverse());
+
+                while (stack.Any())
+                {
+                    //var tupleParamCount = IsTuple(type) ? type.
+                    RegexCaptureGroupNode node = stack.Pop();
 
                     if (int.TryParse(node.name, out var num))
                     {
-                        var (plan, extras) = BindConstructorPlan(node, type, groups.Count);
+                        var plan = BindConstructorPlan(node, type, groups.Count, GetTupleArgumentsList(type).Count(), stack);
                         groups.Add(plan);
-                        foreach (var extra in extras)
-                        {
-                            queue.Enqueue(extra);
-                        }
                     }
                     else
                     {
-                        namedgroups.Add(BindPropertyPlan(node, type, node.name).node);
+                        namedgroups.Add(BindPropertyPlan(node, type, node.name));
                     }
                 }
             }
+            else
+            {
+                foreach (var node in tree.children)
+                {
+                    if (int.TryParse(node.name, out var num))
+                    {
+                        var plan = BindConstructorPlan(node, type, groups.Count, tree.NumberedGroups.Count(), stack);
+                        groups.Add(plan);
+                    }
+                    else
+                    {
+                        namedgroups.Add(BindPropertyPlan(node, type, node.name));
+                    }
 
-            return (ExtractionPlanNode.Bind(tree.name, type, groups.ToArray(), namedgroups.ToArray()), queue.ToArray());
+                }
+            }
+
+            return ExtractionPlanNode.Bind(tree.name, type, groups.ToArray(), namedgroups.ToArray());
         }
 
         public object ToDump() => this;

@@ -133,11 +133,12 @@ namespace RegExtract.Test
             public string? i { get; init; }
         }
 
-        [Fact]
-        public void can_extract_named_capture_groups_to_properties()
-        {
-            PropertiesRecord? record = data.Extract<PropertiesRecord>(pattern_named);
-        }
+        // Don't currently handle nested named captures, and I'm not sure we ever will.
+        //[Fact]
+        //public void can_extract_named_capture_groups_to_properties()
+        //{
+        //    PropertiesRecord? record = data.Extract<PropertiesRecord>(pattern_named);
+        //}
 
         record Passport
         {
@@ -255,6 +256,12 @@ $
         }
 
         [Fact]
+        public void can_extract_nested_to_string_constructor()
+        {
+            var result = "https://www.google.com/ 12345".Extract<(Uri, string, int)>(@"(((.*))) (\d+)");
+        }
+
+        [Fact]
         public void regex_does_not_match()
         {
             Assert.Throws<ArgumentException>(()=>"https://www.google.com/".Extract<Uri>(@"\d+"));
@@ -333,7 +340,19 @@ $
             //var data = "faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.";
             //var plan = RegexExtractionPlan.CreatePlan<(string, string, List<(int?, string)?>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
             //var result = plan.Execute(Regex.Match(data, @"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$"));
+
+            Regex rx;
+            var plan = ExtractionPlan<bagdescription>.CreatePlan(rx = new Regex(@"^(?<name>.+) bags contain(?: (?<none>no other bags)\.| (?<contents>(\d+) (.*?)) bags?[,.])+$"));
+            var result = plan.Extract(rx.Match("faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags."));
         }
+
+        record bagdescription
+        {
+            public string? name { get; init; }
+            public string? none { get; init; }
+            public List<includedbags>? contents { get; init; }
+        }
+        record includedbags(int? num, string name);
 
         [Fact]
         public void debug2()
@@ -374,11 +393,11 @@ $
             {
                 if (str.StartsWith("mask"))
                 {
-                    return str.Extract<maskinstr>(@"mask = (.+)");
+                    return str.Extract<maskinstr>(@"mask = (.+)")!;
                 }
                 else
                 {
-                    return str.Extract<meminstr>(@"mem\[(\d+)] = (\d+)");
+                    return str.Extract<meminstr>(@"mem\[(\d+)] = (\d+)")!;
                 }
             }
         }
