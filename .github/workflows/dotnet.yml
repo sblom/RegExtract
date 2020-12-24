@@ -3,6 +3,7 @@ name: dotnet
 on:
   push:
     branches: [ main ]
+    tags: ["*"]
   pull_request:
     branches: [ main ]
 
@@ -65,7 +66,7 @@ jobs:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: nuget push
-        run: dotnet nuget push "*.nupkg" --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }}
+        run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }}
 
   nuget-push-prod:
     runs-on: ubuntu-latest
@@ -84,4 +85,4 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.NUGET_API_KEY }}
 
-      - run: dotnet nuget push nugets/*.nupkg --skip-duplicate
+      - run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate --api-key ${{ secrets.NUGET_API_KEY }}
