@@ -377,7 +377,7 @@ $
             result = plan2.Extract(regex.Match("The quick brown fox jumps over the lazy dog"));
 
             regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))+");
-            var plan3 = ExtractionPlan<List<((int?, int?)?, char, string)?>>.CreatePlan(regex);
+            var plan3 = ExtractionPlan<List<(string, (int?, int?)?, char, string)?>>.CreatePlan(regex);
 
             result = plan3.Extract(regex.Match("2-12 c: abcdefgji"));
         }

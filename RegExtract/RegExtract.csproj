@@ -8,14 +8,12 @@
 
   <!-- NuGet package config -->
   <PropertyGroup>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>Clean &amp; simple, idiomatic C# RegEx-based line parser.
 
 RegExtract takes a string and a regular expression template and deserializes to a provided type. Works especially well with records and tuples, but can extract to any type that provides either a `static T Parse(string)` method or a single-string constructor (`T(string)`).
 
 See more docs at project page: https://github.com/sblom/RegExtract
 </Description>
-    <Version>1.0.16</Version>
     <Authors>Scott Blomquist</Authors>
     <Copyright>Copyright © Scott Blomquist. All rights reserved.</Copyright>
     <Company />
@@ -42,16 +40,22 @@ See more docs at project page: https://github.com/sblom/RegExtract
   <!-- SourceLink configuration -->
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyVersion>$(GITVERSION_ASSEMBLYSEMVER)</AssemblyVersion>
+    <AssemblyFileVersion>$(GITVERSION_ASSEMBLYFILESEMVER)</AssemblyFileVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.0.0.0</AssemblyVersion>
+    <AssemblyFileVersion Condition="'$(AssemblyFileVersion)' == ''">0.0.0.0</AssemblyFileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>RegExtract.Test</_Parameter1>
     </AssemblyAttribute>
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute"
+                       Condition="'$(Configuration)' == 'Debug'">
       <_Parameter1>LINQPadQuery</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
