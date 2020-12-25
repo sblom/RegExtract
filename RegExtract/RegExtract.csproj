@@ -61,7 +61,7 @@ See more docs at project page: https://github.com/sblom/RegExtract
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\doc\linqpad-samples\**" Pack="True" PackagePath="linqpad-samples\">
+    <None Include="..\doc\linqpad-samples\**" Pack="True" PackagePath="linqpad-samples">
       <Visible>false</Visible>
     </None>
     <None Include="..\images\icon.png" Pack="True" PackagePath="\">
