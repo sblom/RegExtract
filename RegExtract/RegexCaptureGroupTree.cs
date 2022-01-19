@@ -114,11 +114,13 @@ namespace RegExtract.RegexTools
                         groupStart = loc;
                         if (_regexString[loc + 1] == '?')
                         {
-                            if (_regexString[loc + 2] != '<' && _regexString[loc + 2] != '\'')
+                            // ? may be followed by lookbehind (which starts out looking like a <> named group) or something that's clearly not a named group
+                            if ((_regexString[loc + 2] == '<' && (_regexString[loc + 3] == '=' || _regexString[loc + 3] == '!')) || (_regexString[loc + 2] != '<' && _regexString[loc + 2] != '\''))
                             {
                                 ignoreGroups++;
                                 continue;
                             }
+                            // otherwise, it's a named group
                             else
                             {
                                 openchar = _regexString[loc + 2];
