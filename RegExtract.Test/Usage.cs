@@ -209,9 +209,15 @@ $
         }
 
         [Fact]
-        public void can_extract_multimatch_to_tuple()
+        public void can_extract_multimatch_to_tuple_as_list()
         {
             var result = "123 456 789".Extract <List<int>> (@"(?:(\d+) ?)+");
+        }
+
+        [Fact]
+        public void can_extract_multimatch_to_tuple_as_hashset()
+        {
+            var result = "123 456 789".Extract<HashSet<int>>(@"(?:(\d+) ?)+");
         }
 
         [Fact]

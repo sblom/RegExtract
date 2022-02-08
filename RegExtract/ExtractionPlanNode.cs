@@ -73,7 +73,7 @@ namespace RegExtract
 
         internal static ExtractionPlanNode Bind(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
-            var innerType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var innerType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             innerType = IsNullable(innerType) ? innerType.GetGenericArguments().Single() : innerType;
 
             var multiConstructor = innerType.GetConstructors()
@@ -91,7 +91,7 @@ namespace RegExtract
 
             ExtractionPlanNode node;
 
-            if (IsList(innerType))
+            if (IsCollection(innerType))
                 node = new ListOfListsNode(groupName, type, constructorParams, propertySetters);
             else if (IsTuple(innerType))
                 node = new ConstructTupleNode(groupName, type, constructorParams, propertySetters);
@@ -107,7 +107,7 @@ namespace RegExtract
 
         internal static ExtractionPlanNode BindLeaf(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
-            var innerType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var innerType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             innerType = IsNullable(innerType) ? innerType.GetGenericArguments().Single() : innerType;
 
             var staticParseMethod = innerType.GetMethod("Parse",
@@ -122,7 +122,7 @@ namespace RegExtract
 
             ExtractionPlanNode node;
 
-            if (IsList(innerType))
+            if (IsCollection(innerType))
                 throw new ArgumentException("List of lists in type cannot be bound to leaf of regex capture group tree.");
             else if (IsTuple(innerType))
                 throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree.");
@@ -161,9 +161,9 @@ namespace RegExtract
 
             Type innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
-            bool isList = IsList(type);
+            bool isCollection = IsCollection(type);
 
-            if (!isList)
+            if (!isCollection)
             {
                 if (!ranges.Any())
                 {
@@ -187,13 +187,14 @@ namespace RegExtract
             }
             else
             {
-                var listType = type.GetGenericArguments().Single();
+                var itemType = type.GetGenericArguments().Single();
 
-                List<object?> vals = new();
+                var vals = Activator.CreateInstance(type);
+                var addMethod = type.GetMethod("Add");
                 
                 foreach (var range in ranges)
                 {
-                    var itemVal = Construct(match, listType, range);
+                    var itemVal = Construct(match, itemType, range);
 
                     if (itemVal is not null)
                     {
@@ -203,18 +204,10 @@ namespace RegExtract
                         }
                     }
 
-                    vals.Add(itemVal);
+                    addMethod.Invoke(vals, new[] { itemVal });
                 }
 
-                MethodInfo CastMethod = typeof(Enumerable).GetMethod("Cast");
-                MethodInfo ToListMethod = typeof(Enumerable).GetMethod("ToList");
-
-                var castItems = CastMethod.MakeGenericMethod(new Type[] { listType })
-                                            .Invoke(null, new object[] { vals });
-                var listout = ToListMethod.MakeGenericMethod(new Type[] { listType })
-                                            .Invoke(null, new object[] { castItems });
-
-                result = listout;
+                result = vals;
             }
 
             return result;
@@ -251,12 +244,12 @@ namespace RegExtract
         }
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
-        protected const string LIST_TYPENAME = "System.Collections.Generic.List`";
         protected const string NULLABLE_TYPENAME = "System.Nullable`";
 
-        protected static bool IsList(Type type)
+        protected static bool IsCollection(Type type)
         {
-            return type.FullName.StartsWith(LIST_TYPENAME);
+            return type.GetInterfaces()
+                       .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>));
         }
 
         protected static bool IsTuple(Type type)
