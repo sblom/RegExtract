@@ -40,7 +40,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            if (!IsList(type) || !IsList(type.GetGenericArguments().Single()))
+            if (!IsCollection(type) || !IsCollection(type.GetGenericArguments().Single()))
                 throw new InvalidOperationException($"{nameof(ListOfListsNode)} assigned type other than List<List<T>>");
 
             base.Validate();
@@ -59,7 +59,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             if (!IsTuple(unwrappedType))
@@ -88,7 +88,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             var constructors = unwrappedType.GetConstructors()
@@ -140,7 +140,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
-            type = IsList(type) ? type.GetGenericArguments().Single() : type;
+            type = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             var parse = type.GetMethod("Parse",
@@ -154,7 +154,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             var parse = unwrappedType.GetMethod("Parse",

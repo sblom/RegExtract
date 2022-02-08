@@ -49,12 +49,12 @@ namespace RegExtract
 
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
-        protected const string LIST_TYPENAME = "System.Collections.Generic.List`";
         protected const string NULLABLE_TYPENAME = "System.Nullable`";
 
-        protected bool IsList(Type type)
+        protected bool IsCollection(Type type)
         {
-            return type.FullName.StartsWith(LIST_TYPENAME);
+            return type.GetInterfaces()
+                       .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>));
         }
 
         protected bool IsTuple(Type type)
@@ -82,10 +82,10 @@ namespace RegExtract
                 return true;
             }
 
-            if (IsList(type))
+            if (IsCollection(type))
             {
                 type = type.GetGenericArguments().Single();
-                return !IsList(type) && IsDirectlyConstructable(type);
+                return !IsCollection(type) && IsDirectlyConstructable(type);
             }
 
             if (IsNullable(type))
@@ -133,7 +133,7 @@ namespace RegExtract
 
         private ExtractionPlanNode AssignTypesToTree_0(RegexCaptureGroupNode tree, Type type)
         {
-            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             if (!tree.children.Any())
@@ -168,7 +168,7 @@ namespace RegExtract
 
         ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum, int paramCount, Stack<RegexCaptureGroupNode>? stack)
         {
-            if (IsList(type))
+            if (IsCollection(type))
             {
                 type = type.GetGenericArguments().Single();
             }
@@ -211,7 +211,7 @@ namespace RegExtract
 
         private ExtractionPlanNode AssignTypesToTree_Recursive(RegexCaptureGroupNode tree, Type type, Stack<RegexCaptureGroupNode>? stack = null)
         {
-            var unwrappedType = IsList(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             List<ExtractionPlanNode> groups = new();
