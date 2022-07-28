@@ -19,7 +19,7 @@ namespace RegExtract.Test
         [Fact]
         public void can_parse_nullable_pattern()
         {
-            "1 2".Extract<(int, int, int)>(@"(\d+)\s+(\d+)\s*(\d*)");
+            "12".Extract<(int, int, int?)>(@"(.)(.)(.)*");
         }
 
         [Fact]
