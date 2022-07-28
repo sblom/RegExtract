@@ -142,7 +142,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
         {
             type = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-            if (Type.GetType($"{type.FullName}&") is null)
+            if (type.Namespace != "System")
             {
                 return type.GetMethod("Parse",
                     BindingFlags.Static | BindingFlags.Public,
@@ -155,7 +155,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
             type.GetMethod("TryParse",
                 BindingFlags.Static | BindingFlags.Public,
                 null,
-                new Type[] { typeof(string), Type.GetType($"{type.FullName}&") ?? type },
+                new Type[] { typeof(string), Type.GetType($"{type.FullName}&") },
                 null
             ).Invoke(null, args);
             return args[1];
