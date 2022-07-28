@@ -17,6 +17,35 @@ namespace RegExtract.Test
         const string pattern_named = "(?<n>(?<s>(?<a>.)(?<b>.)(?<c>.)(?<d>.)(?<e>.)(?<f>.)(?<g>.)(?<h>.)(?<i>.)))";
 
         [Fact]
+        public void can_try_extract_to_tuple()
+        {
+            var plan = ExtractionPlan<(int a, char b, string c, int d, char e, string f, int g, char h, string i)>.CreatePlan(new Regex(pattern));
+            var ok = plan.TryExtract(data, out var extracted);
+
+            Assert.True(ok);
+
+            Assert.IsType<int>(extracted.a);
+            Assert.IsType<char>(extracted.b);
+            Assert.IsType<string>(extracted.c);
+            Assert.IsType<int>(extracted.d);
+            Assert.IsType<char>(extracted.e);
+            Assert.IsType<string>(extracted.f);
+            Assert.IsType<int>(extracted.g);
+            Assert.IsType<char>(extracted.h);
+            Assert.IsType<string>(extracted.i);
+
+            Assert.Equal(1, extracted.a);
+            Assert.Equal('2', extracted.b);
+            Assert.Equal("3", extracted.c);
+            Assert.Equal(4, extracted.d);
+            Assert.Equal('5', extracted.e);
+            Assert.Equal("6", extracted.f);
+            Assert.Equal(7, extracted.g);
+            Assert.Equal('8', extracted.h);
+            Assert.Equal("9", extracted.i);
+        }
+
+        [Fact]
         public void can_parse_lookbehind()
         {
             data.Extract<string>(@"(?<=(12))");
@@ -140,7 +169,7 @@ namespace RegExtract.Test
         }
 
         // Don't currently handle nested named captures, and I'm not sure we ever will.
-        //[Fact]
+        // [Fact]
         //public void can_extract_named_capture_groups_to_properties()
         //{
         //    PropertiesRecord? record = data.Extract<PropertiesRecord>(pattern_named);
