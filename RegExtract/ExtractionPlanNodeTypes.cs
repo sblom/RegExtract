@@ -142,13 +142,22 @@ namespace RegExtract.ExtractionPlanNodeTypes
         {
             type = IsCollection(type) ? type.GetGenericArguments().Single() : type;
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-            var parse = type.GetMethod("TryParse",
-                            BindingFlags.Static | BindingFlags.Public,
-                            null,
-                            new Type[] { typeof(string), Type.GetType($"{type.FullName}&") },
-                            null);
+            if (Type.GetType($"{type.FullName}&") is null)
+            {
+                return type.GetMethod("Parse",
+                    BindingFlags.Static | BindingFlags.Public,
+                    null,
+                    new Type[] { typeof(string) },
+                    null
+                ).Invoke(null, new object[] { range.Value });
+            }
             var args = new object[] { range.Value, null! };
-            parse.Invoke(null, args);
+            type.GetMethod("TryParse",
+                BindingFlags.Static | BindingFlags.Public,
+                null,
+                new Type[] { typeof(string), Type.GetType($"{type.FullName}&") ?? type },
+                null
+            ).Invoke(null, args);
             return args[1];
         }
 
