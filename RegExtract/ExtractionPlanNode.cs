@@ -125,7 +125,7 @@ namespace RegExtract
             if (IsCollection(innerType))
                 throw new ArgumentException("List of lists in type cannot be bound to leaf of regex capture group tree.");
             else if (IsTuple(innerType))
-                throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree.");
+                throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree." + innerType.Name);
             else if (staticParseMethod is not null)
                 node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
             else if (stringConstructor is not null)
@@ -146,9 +146,81 @@ namespace RegExtract
             return;
         }
 
+        internal virtual bool TryConstruct(Match match, Type type, (string Value, int Index, int Length) range, out object? result)
+        {
+            result = Construct(match, type, range);
+            return true;
+        }
+
         internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
             throw new InvalidOperationException("Can't construct a node based on base ExtractionPlanNode type.");
+        }
+
+        internal virtual bool TryExecute(Match match, int captureStart, int captureLength, out object? result)
+        {
+            var ranges = AsEnumerable(match.Groups[groupName].Captures)
+                  .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
+                  .Select(cap => (cap.Value, cap.Index, cap.Length));
+            Type innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            bool isCollection = IsCollection(type);
+            if (!isCollection)
+            {
+                if (!ranges.Any())
+                {
+                    if (type.IsClass || Nullable.GetUnderlyingType(type) != null)
+                    {
+                        result = null;
+                        return false;
+                    }
+                    result = Convert.ChangeType(null, type);
+                    return true;
+                }
+                else
+                {
+                    var lastRange = ranges.Last();
+                    if (!TryConstruct(match, innerType, lastRange, out result))
+                    {
+                        return false;
+                    }
+                    foreach (var prop in propertyNodes)
+                    {
+                        result!.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
+                    }
+                }
+            }
+            else
+            {
+                result = null;
+                var itemType = type.GetGenericArguments().Single();
+                var vals = Activator.CreateInstance(type);
+                var addMethod = type.GetMethod("Add");
+                foreach (var range in ranges)
+                {
+                    if (!TryConstruct(match, itemType, range, out var itemVal))
+                    {
+                        return false;
+                    }
+                    foreach (var prop in propertyNodes)
+                    {
+                        itemVal!.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, range.Index, range.Length) });
+                    }
+                    addMethod.Invoke(vals, new[] { itemVal });
+                }
+
+                result = vals;
+            }
+            return true;
+        }
+
+        public bool TryExecute(Match match, out object? result)
+        {
+            if (!match.Success)
+            {
+                throw new ArgumentException("Regex didn't match.");
+            }
+
+            return TryExecute(match, match.Groups[groupName].Index, match.Groups[groupName].Length, out result);
         }
 
         internal virtual object? Execute(Match match, int captureStart, int captureLength)

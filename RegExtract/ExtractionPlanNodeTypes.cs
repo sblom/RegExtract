@@ -104,6 +104,11 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record EnumParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
+        internal override bool TryConstruct(Match match, Type type, (string Value, int Index, int Length) range, out object? result)
+        {
+            result = Construct(match, type, range);
+            return true;
+        }
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
             return Enum.Parse(type, range.Value);
@@ -138,6 +143,27 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record StaticParseMethodNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
+        internal override bool TryConstruct(Match match, Type type, (string Value, int Index, int Length) range, out object? result)
+        {
+            type = IsCollection(type) ? type.GetGenericArguments().Single() : type;
+            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            if (type.Namespace != "System")
+            {
+                result = Construct(match, type, range);
+                return true;
+            }
+
+            var args = new object[] { range.Value, null! };
+            var ok = (bool)type.GetMethod(
+                "TryParse",
+                BindingFlags.Static | BindingFlags.Public,
+                null,
+                new Type[] { typeof(string), Type.GetType($"{type.FullName}&") },
+                null
+            ).Invoke(null, args);
+            result = args[1];
+            return ok;
+        }
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
             type = IsCollection(type) ? type.GetGenericArguments().Single() : type;
