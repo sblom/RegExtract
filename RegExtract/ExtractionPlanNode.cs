@@ -125,7 +125,7 @@ namespace RegExtract
             if (IsCollection(innerType))
                 throw new ArgumentException("List of lists in type cannot be bound to leaf of regex capture group tree.");
             else if (IsTuple(innerType))
-                throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree." + innerType.Name);
+                throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree.");
             else if (staticParseMethod is not null)
                 node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
             else if (stringConstructor is not null)
