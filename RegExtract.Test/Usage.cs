@@ -17,6 +17,12 @@ namespace RegExtract.Test
         const string pattern_named = "(?<n>(?<s>(?<a>.)(?<b>.)(?<c>.)(?<d>.)(?<e>.)(?<f>.)(?<g>.)(?<h>.)(?<i>.)))";
 
         [Fact]
+        public void can_parse_nullable_pattern()
+        {
+            "1 2".Extract<(int, int, int)>(@"(\d+)\s+(\d+)\s*(\d*)");
+        }
+
+        [Fact]
         public void can_parse_lookbehind()
         {
             data.Extract<string>(@"(?<=(12))");
