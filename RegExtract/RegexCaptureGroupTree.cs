@@ -266,7 +266,7 @@ namespace RegExtract.RegexTools
                     }
                 }
 
-                var topline = tree.substring.text.Substring(left, tree.children[0].substring.range.start - left);
+                var topline = tree.substring.text.Substring(0, tree.children[0].substring.range.start - left);
                 for (int i = 0; i < blocks.Length; i++)
                 {
                     pad = new char[blocks[i][0].Length];
