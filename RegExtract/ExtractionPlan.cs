@@ -53,8 +53,10 @@ namespace RegExtract
 
         // We use C#'s definition of an initializable collection, which is any type that implements IEnumerable and has a public Add() method.
         // In our case, we also require that the Add() method has parameters of the same type as the collection's generic parameters.
-        protected bool IsInitializableCollection(Type type)
+        protected bool IsInitializableCollection(Type? type)
         {
+            if (type == null)
+                return false;
             var genericParameters = type.GetGenericArguments();
             var addMethod = type.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, genericParameters, null);
 
@@ -239,7 +241,7 @@ namespace RegExtract
                     return new VirtualUnaryTupleNode(tree.name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
                 }
 
-                if (typeParams.Length < 2)
+                if (typeParams.Length < 2 && !IsInitializableCollection(typeParams.FirstOrDefault()))
                 {
                     return ExtractionPlanNode.Bind(tree.name, type, new[] { BindConstructorPlan(tree, type, 0, 1, stack) }, new ExtractionPlanNode[0]);
                 }

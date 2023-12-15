@@ -95,6 +95,16 @@ namespace RegExtract.Test
         }
 
         [Fact]
+        public void a009()
+        {
+            var plan = ExtractionPlan<List<List<List<char>>>>.CreatePlan(new Regex(@"(((\w)+ ?)+,? ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+
+            var result = plan.Extract(@"asdf lkj, wero oiu");
+        }
+
+        [Fact]
         public void slow()
         {
             var plan = ExtractionPlan<List<(string, string)>>.CreatePlan(new Regex(@"(([a-z]+)([=-].?),?)+"));
@@ -335,7 +345,11 @@ $
         [Fact]
         public void nested_extraction_of_list()
         {
-            var result = "The quick brown fox jumps over the lazy dog.".Extract<List<List<char>>>(@"(?:((\w)+) ?)+");
+            var plan = ExtractionPlan<List<List<char>>>.CreatePlan(new Regex(@"(((\w)+) ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+            
+            var result = plan.Extract("The quick brown fox jumps over the lazy dog.");
         }
 
         [Fact]
@@ -418,7 +432,7 @@ $
             var plan = ExtractionPlan<((int?, int?)?, char, string)?>.CreatePlan(regex);
             object? result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
 
-            regex = new Regex(@"(?:((\w)+) ?)+");
+            regex = new Regex(@"(((\w)+) ?)+");
             var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex);
 
             result = plan2.Extract(regex.Match("The quick brown fox jumps over the lazy dog"));
