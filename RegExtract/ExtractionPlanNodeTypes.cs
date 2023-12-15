@@ -41,7 +41,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
             object?[] itemVals = new object[genericArgs.Length];
 
-            var rangeArray = constructorParams.Select(c => Ranges(match, c.groupName, captureStart, captureLength).GetEnumerator()).ToArray();
+            var rangeArray = constructorParams.Select(c => Ranges(match, groupName, captureStart, captureLength).GetEnumerator()).ToArray();
 
             do
             {

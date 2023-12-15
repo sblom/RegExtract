@@ -73,15 +73,21 @@ namespace RegExtract.Test
         [Fact]
         public void a006()
         {
-            var str = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"((\d+) ?)+")).ToString("x");
+            var plan = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"((\d+) ?)+"));
+            var str = plan.ToString("x");
             output.WriteLine(str);
+
+            var result = plan.Extract("123 456 789");
         }
 
         [Fact]
         public void a007()
         {
-            var str = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"(?:(\d+) ?)+")).ToString("x");
+            var plan = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"(?:(\d+) ?)+"));
+            var str = plan.ToString("x");
             output.WriteLine(str);
+
+            var result = plan.Extract("123 456 789");
         }
 
         [Fact]
@@ -345,11 +351,23 @@ $
         [Fact]
         public void nested_extraction_of_list()
         {
-            var plan = ExtractionPlan<List<List<char>>>.CreatePlan(new Regex(@"(((\w)+) ?)+"));
+            // TODO: Why does this need the outer parens here: "((\w)+)"?
+            var plan = ExtractionPlan<List<List<char>>>.CreatePlan(new Regex(@"((\w)+ ?)+"));
             var str = plan.ToString("x");
             output.WriteLine(str);
             
             var result = plan.Extract("The quick brown fox jumps over the lazy dog.");
+        }
+
+        [Fact]
+        public void harder_nested_extraction_of_list()
+        {
+            // TODO: This currently doesn't quite work without extra parens outsize the top level.
+            var plan = ExtractionPlan<List<List<List<char>>>>.CreatePlan(new Regex(@"(((\w)+ ?)+,? ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+
+            var result = plan.Extract("asdf lkj, wero oiu");
         }
 
         [Fact]
