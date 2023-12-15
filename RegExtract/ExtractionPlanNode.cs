@@ -150,72 +150,36 @@ namespace RegExtract
             throw new InvalidOperationException("Can't construct a node based on base ExtractionPlanNode type.");
         }
 
-        private IEnumerable<(string Value, int Index, int Length)> Ranges(Match match, string groupName, int captureStart, int captureLength) => AsEnumerable(match.Groups[groupName].Captures)
+        protected IEnumerable<(string Value, int Index, int Length)> Ranges(Match match, string groupName, int captureStart, int captureLength) => AsEnumerable(match.Groups[groupName].Captures)
                   .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
                   .Select(cap => (cap.Value, cap.Index, cap.Length));
 
         internal virtual object? Execute(Match match, int captureStart, int captureLength)
         {
-            // TODO: Factor Collection implementation into Execute on InitializableCollectionNode
-
             object? result = null;
 
             var ranges = Ranges(match, groupName, captureStart, captureLength);
 
             Type innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
-            bool isCollection = IsInitializableCollection(type);
-
-            if (!isCollection)
+            if (!ranges.Any())
             {
-                if (!ranges.Any())
-                {
-                    if (type.IsClass || Nullable.GetUnderlyingType(type) != null) return null;
-                    else return Convert.ChangeType(null, type);
-                }
-                else
-                {
-                    var lastRange = ranges.Last();
-
-                    result = Construct(match, innerType, lastRange);
-
-                    if (result is not null)
-                    {
-                        foreach (var prop in propertyNodes)
-                        {
-                            result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
-                        }
-                    }
-                }
+                if (type.IsClass || Nullable.GetUnderlyingType(type) != null) return null;
+                else return Convert.ChangeType(null, type);
             }
             else
             {
-                var genericArgs = type.GetGenericArguments();
+                var lastRange = ranges.Last();
 
-                var vals = Activator.CreateInstance(type);
-                var addMethod = type.GetMethod("Add");
+                result = Construct(match, innerType, lastRange);
 
-                object?[] itemVals = new object[genericArgs.Length];
-
-                var rangeArray = constructorParams.Select(c => Ranges(match, c.groupName, captureStart, captureLength).GetEnumerator()).ToArray();
-
-                do
+                if (result is not null)
                 {
-                    for (int i = 0; i < genericArgs.Length; i++)
+                    foreach (var prop in propertyNodes)
                     {
-                        if (rangeArray[i].MoveNext())
-                        {
-                            itemVals[i] = constructorParams[i].Execute(match, rangeArray[i].Current.Index, rangeArray[i].Current.Length);
-                        }
-                        else
-                        {
-                            goto no_more;
-                        }
+                        result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
                     }
-                    addMethod.Invoke(vals, itemVals);
-                } while (true);
-            no_more:;
-                result = vals;
+                }
             }
 
             return result;
@@ -229,26 +193,6 @@ namespace RegExtract
             }
 
             return Execute(match, match.Groups[groupName].Index, match.Groups[groupName].Length);
-        }
-
-        protected object CreateGenericTuple(Type tupleType, IEnumerable<object?> vals)
-        {
-            var typeArgs = tupleType.GetGenericArguments();
-            var constructor = tupleType.GetConstructor(tupleType.GetGenericArguments());
-
-            if (typeArgs.Count() < 8 && vals.Count() != typeArgs.Count())
-                throw new ArgumentException($"Number of capture groups doesn't match tuple arity.");
-
-            if (typeArgs.Count() <= 7)
-            {
-                return constructor.Invoke(vals.ToArray());
-            }
-            else
-            {
-                return constructor.Invoke(vals.Take(7)
-                          .Concat(new[] { CreateGenericTuple(typeArgs[7], vals.Skip(7)) })
-                          .ToArray());
-            }
         }
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
