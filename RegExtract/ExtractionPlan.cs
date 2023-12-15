@@ -208,7 +208,7 @@ namespace RegExtract
             {
                 if (tree.children.Any())
                 {
-                    return new VirtualUnaryTupleNode(tree.children.Single().name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
+                    return new VirtualUnaryTupleNode(tree.name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
                 }
                 return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
             }

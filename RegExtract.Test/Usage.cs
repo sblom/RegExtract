@@ -93,6 +93,16 @@ namespace RegExtract.Test
         [Fact]
         public void a008()
         {
+            var plan = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"(\d+ ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+
+            var result = plan.Extract("123 456 789");
+        }
+
+        [Fact]
+        public void a009()
+        {
             var plan = ExtractionPlan<List<(string, string)>>.CreatePlan(new Regex(@"(([a-z]+)([=-][0-9]?),?)+"));
             var str = plan.ToString("x");
             output.WriteLine(str);
@@ -101,7 +111,7 @@ namespace RegExtract.Test
         }
 
         [Fact]
-        public void a009()
+        public void a010()
         {
             var plan = ExtractionPlan<List<List<List<char>>>>.CreatePlan(new Regex(@"(((\w)+ ?)+,? ?)+"));
             var str = plan.ToString("x");
