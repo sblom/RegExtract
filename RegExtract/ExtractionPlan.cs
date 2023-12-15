@@ -31,6 +31,28 @@ namespace RegExtract
             return (T)Plan.Execute(match)!;
         }
 
+        public bool TryExtract(string str, out T result)
+        {
+            result = default!;
+            if (!Plan.TryExecute(_tree?.Regex.Match(str) ?? Regex.Match("",""), out var temp))
+            {
+                return false;
+            }
+            result = (T)temp!;
+            return true;
+        }
+
+        public bool TryExtract(Match match, out T result)
+        {
+            result = default!;
+            if (!Plan.TryExecute(match, out var temp))
+            {
+                return false;
+            }
+            result = (T)temp!;
+            return true;
+        }
+
         static public ExtractionPlan<T> CreatePlan(Regex regex, RegExtractOptions reOptions= RegExtractOptions.None)
         {
             ExtractionPlan<T> plan = new ExtractionPlan<T>();
