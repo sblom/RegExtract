@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -73,8 +74,7 @@ namespace RegExtract
 
         internal static ExtractionPlanNode Bind(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
-            var innerType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
-            innerType = IsNullable(innerType) ? innerType.GetGenericArguments().Single() : innerType;
+            var innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             var multiConstructor = innerType.GetConstructors()
                 .Where(cons => cons.GetParameters().Length == constructorParams.Length);
@@ -91,12 +91,14 @@ namespace RegExtract
 
             ExtractionPlanNode node;
 
-            if (IsCollection(innerType))
-                node = new ListOfListsNode(groupName, type, constructorParams, propertySetters);
+            if (IsInitializableCollection(innerType))
+                node = new CollectionInitializerNode(groupName, type, constructorParams, propertySetters);
             else if (IsTuple(innerType))
                 node = new ConstructTupleNode(groupName, type, constructorParams, propertySetters);
             else if (multiConstructor.Count() == 1 && (constructorParams.Any() || propertySetters.Any()))
                 node = new ConstructorNode(groupName, type, constructorParams, propertySetters);
+            else if (!constructorParams.Any() && !propertySetters.Any() && stringConstructor != null)
+                node = new StringConstructorNode(groupName, type, new ExtractionPlanNode[0], new ExtractionPlanNode[0]);
             else
                 throw new ArgumentException("Couldn't find appropriate constructor for type.");
 
@@ -107,8 +109,7 @@ namespace RegExtract
 
         internal static ExtractionPlanNode BindLeaf(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
-            var innerType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
-            innerType = IsNullable(innerType) ? innerType.GetGenericArguments().Single() : innerType;
+            var innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             var staticParseMethod = innerType.GetMethod("Parse",
                                         BindingFlags.Static | BindingFlags.Public,
@@ -122,9 +123,7 @@ namespace RegExtract
 
             ExtractionPlanNode node;
 
-            if (IsCollection(innerType))
-                throw new ArgumentException("List of lists in type cannot be bound to leaf of regex capture group tree.");
-            else if (IsTuple(innerType))
+            if (IsTuple(innerType))
                 throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree.");
             else if (staticParseMethod is not null)
                 node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
@@ -151,17 +150,21 @@ namespace RegExtract
             throw new InvalidOperationException("Can't construct a node based on base ExtractionPlanNode type.");
         }
 
-        internal virtual object? Execute(Match match, int captureStart, int captureLength)
-        {
-            object? result = null;
-
-            var ranges = AsEnumerable(match.Groups[groupName].Captures)
+        private IEnumerable<(string Value, int Index, int Length)> Ranges(Match match, string groupName, int captureStart, int captureLength) => AsEnumerable(match.Groups[groupName].Captures)
                   .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
                   .Select(cap => (cap.Value, cap.Index, cap.Length));
 
+        internal virtual object? Execute(Match match, int captureStart, int captureLength)
+        {
+            // TODO: Factor Collection implementation into Execute on InitializableCollectionNode
+
+            object? result = null;
+
+            var ranges = Ranges(match, groupName, captureStart, captureLength);
+
             Type innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
-            bool isCollection = IsCollection(type);
+            bool isCollection = IsInitializableCollection(type);
 
             if (!isCollection)
             {
@@ -187,26 +190,31 @@ namespace RegExtract
             }
             else
             {
-                var itemType = type.GetGenericArguments().Single();
+                var genericArgs = type.GetGenericArguments();
 
                 var vals = Activator.CreateInstance(type);
                 var addMethod = type.GetMethod("Add");
-                
-                foreach (var range in ranges)
-                {
-                    var itemVal = Construct(match, itemType, range);
 
-                    if (itemVal is not null)
+                object?[] itemVals = new object[genericArgs.Length];
+
+                var rangeArray = constructorParams.Select(c => Ranges(match, c.groupName, captureStart, captureLength).GetEnumerator()).ToArray();
+
+                do
+                {
+                    for (int i = 0; i < genericArgs.Length; i++)
                     {
-                        foreach (var prop in propertyNodes)
+                        if (rangeArray[i].MoveNext())
                         {
-                            itemVal.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, range.Index, range.Length) });
+                            itemVals[i] = constructorParams[i].Execute(match, rangeArray[i].Current.Index, rangeArray[i].Current.Length);
+                        }
+                        else
+                        {
+                            goto no_more;
                         }
                     }
-
-                    addMethod.Invoke(vals, new[] { itemVal });
-                }
-
+                    addMethod.Invoke(vals, itemVals);
+                } while (true);
+            no_more:;
                 result = vals;
             }
 
@@ -246,10 +254,12 @@ namespace RegExtract
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
         protected const string NULLABLE_TYPENAME = "System.Nullable`";
 
-        protected static bool IsCollection(Type type)
+        protected static bool IsInitializableCollection(Type type)
         {
-            return type.GetInterfaces()
-                       .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>));
+            var genericParameters = type.GetGenericArguments();
+            var addMethod = type.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, genericParameters, null);
+
+            return type.GetInterfaces().Any(i => i == typeof(IEnumerable)) && addMethod != null;
         }
 
         protected static bool IsTuple(Type type)

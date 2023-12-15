@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 
 using RegExtract.ExtractionPlanNodeTypes;
@@ -44,17 +44,21 @@ namespace RegExtract
             _tree = new RegexCaptureGroupTree(regex);
             Type type = typeof(T);
 
-            Plan = AssignTypesToTree_0(_tree.Tree, type);
+            Plan = AssignTypesToTree(_tree.Tree, type);
         }
 
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
         protected const string NULLABLE_TYPENAME = "System.Nullable`";
 
-        protected bool IsCollection(Type type)
+        // We use C#'s definition of an initializable collection, which is any type that implements IEnumerable and has a public Add() method.
+        // In our case, we also require that the Add() method has parameters of the same type as the collection's generic parameters.
+        protected bool IsInitializableCollection(Type type)
         {
-            return type.GetInterfaces()
-                       .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>));
+            var genericParameters = type.GetGenericArguments();
+            var addMethod = type.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, genericParameters, null);
+
+            return type.GetInterfaces().Any(i => i == typeof(IEnumerable)) && addMethod != null;
         }
 
         protected bool IsTuple(Type type)
@@ -80,12 +84,6 @@ namespace RegExtract
             if (type == typeof(string))
             {
                 return true;
-            }
-
-            if (IsCollection(type))
-            {
-                type = type.GetGenericArguments().Single();
-                return !IsCollection(type) && IsDirectlyConstructable(type);
             }
 
             if (IsNullable(type))
@@ -131,24 +129,6 @@ namespace RegExtract
             }
         }
 
-        private ExtractionPlanNode AssignTypesToTree_0(RegexCaptureGroupNode tree, Type type)
-        {
-            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
-            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
-
-            if (!tree.children.Any())
-            {
-                return ExtractionPlanNode.BindLeaf("0", type, new ExtractionPlanNode[0], new ExtractionPlanNode[0]);
-            }
-
-            if (!IsTuple(unwrappedType) && !IsContainerOfSize(unwrappedType, tree.NumberedGroups.Count()) && !tree.NamedGroups.Any())
-            {
-                return new VirtualUnaryTupleNode(tree.name, type, new ExtractionPlanNode[] { AssignTypesToTree_Recursive(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
-            }
-
-            return AssignTypesToTree_Recursive(tree, type);
-        }
-
         ExtractionPlanNode BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
         {
             if (IsNullable(type))
@@ -163,16 +143,11 @@ namespace RegExtract
 
             type = property.PropertyType;
 
-            return AssignTypesToTree_Recursive(tree, type);
+            return AssignTypesToTree(tree, type);
         }
 
         ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum, int paramCount, Stack<RegexCaptureGroupNode>? stack)
         {
-            if (IsCollection(type))
-            {
-                type = type.GetGenericArguments().Single();
-            }
-
             if (IsNullable(type))
             {
                 type = type.GetGenericArguments().Single();
@@ -181,7 +156,18 @@ namespace RegExtract
             var constructors = type.GetConstructors()
                        .Where(cons => cons.GetParameters().Length == paramCount);
 
-            if (IsTuple(type))
+            if (IsInitializableCollection(type))
+            {
+                try
+                {
+                    type = type.GetGenericArguments()[paramNum];
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for collection {type.FullName}");
+                }
+            }
+            else if (IsTuple(type))
             {
                 try
                 {
@@ -206,26 +192,21 @@ namespace RegExtract
                 }
             }
 
-            return AssignTypesToTree_Recursive(tree, type, stack);
+            return AssignTypesToTree(tree, type, stack);
         }
 
-        private ExtractionPlanNode AssignTypesToTree_Recursive(RegexCaptureGroupNode tree, Type type, Stack<RegexCaptureGroupNode>? stack = null)
+        private ExtractionPlanNode AssignTypesToTree(RegexCaptureGroupNode tree, Type type, Stack<RegexCaptureGroupNode>? stack = null)
         {
-            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
-            unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
+            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             List<ExtractionPlanNode> groups = new();
             List<ExtractionPlanNode> namedgroups = new();
 
-            if (!tree.children.Any() || IsDirectlyConstructable(type))
+            if (IsDirectlyConstructable(type))
             {
                 if (tree.children.Any())
                 {
-                    if (stack == null) throw new ArgumentException("Leftover branch in Rx subtree but no tuple with extra slots to receive it.");
-                    foreach (var child in tree.children.Reverse())
-                    {
-                        stack.Push(child);
-                    }
+                    return new VirtualUnaryTupleNode(tree.children.Single().name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
                 }
                 return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
             }
@@ -249,6 +230,27 @@ namespace RegExtract
                     }
                 }
             }
+            else if (IsInitializableCollection(type))
+            {
+                var typeParams = type.GetGenericArguments();
+
+                if (tree.name == "0")
+                {
+                    return new VirtualUnaryTupleNode(tree.name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
+                }
+
+                if (typeParams.Length < 2)
+                {
+                    return ExtractionPlanNode.Bind(tree.name, type, new[] { BindConstructorPlan(tree, type, 0, 1, stack) }, new ExtractionPlanNode[0]);
+                }
+
+                foreach (var node in tree.children)
+                {
+                    var plan = BindConstructorPlan(node, type, groups.Count, tree.NumberedGroups.Count(), stack);
+                    groups.Add(plan);
+                }
+                // TODO: assert that there are no named groups
+            }
             else
             {
                 foreach (var node in tree.children)
@@ -262,7 +264,6 @@ namespace RegExtract
                     {
                         namedgroups.Add(BindPropertyPlan(node, type, node.name));
                     }
-
                 }
             }
 

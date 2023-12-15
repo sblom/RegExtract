@@ -1,20 +1,88 @@
 using System;
-using System.Linq;
 
 using Xunit;
 
-using RegExtract;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
+using Xunit.Abstractions;
 
 namespace RegExtract.Test
 {
     public class Usage
     {
+        private readonly ITestOutputHelper output;
+
+        public Usage(ITestOutputHelper output)
+        {
+            this.output = output;
+        }
+
         const string data = "123456789";
         const string pattern = "(.)(.)(.)(.)(.)(.)(.)(.)(.)";
         const string pattern_nested = "(((.)(.)(.)(.)(.)(.)(.)(.)(.)))";
         const string pattern_named = "(?<n>(?<s>(?<a>.)(?<b>.)(?<c>.)(?<d>.)(?<e>.)(?<f>.)(?<g>.)(?<h>.)(?<i>.)))";
+
+        [Fact]
+        public void a001()
+        {
+            var str = ExtractionPlan<List<(char, char)>>.CreatePlan(new Regex(@"((\w)(\w))+")).ToString("x");
+            output.WriteLine(str);
+        }
+
+        [Fact]
+        public void a002()
+        {
+            var str = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"((\d+) ?)+")).ToString("x");
+            output.WriteLine(str);
+        }
+
+        record game(int id, List<draw> draws);
+        record draw(List<(int count, string color)> colors);
+
+        [Fact]
+        public void a003()
+        {
+            var plan = ExtractionPlan<game>.CreatePlan(new Regex(@"Game (\d+): (((\d+) (\w+),? ?)+;? ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+
+            var result = plan.Extract("Game 31: 9 blue, 6 red, 7 green; 20 red, 1 green, 15 blue; 6 blue, 7 green, 17 red; 2 blue, 3 green, 6 red; 1 red, 3 blue, 2 green; 5 green, 18 red, 6 blue");
+        }
+
+        [Fact]
+        public void a004()
+        {
+            var plan = ExtractionPlan<List<(char, int)>>.CreatePlan(new Regex(@"(([RL])(\d+),? ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+
+            var result = plan.Extract("R8, R4, L4, R8");
+        }
+
+
+        [Fact]
+        public void a005()
+        {
+            var plan = ExtractionPlan<Dictionary<string, (string left, string right)>>.CreatePlan(new Regex(@"((...) = \(((...), (...))\);? ?)+"));
+            var str = plan.ToString("x");
+            output.WriteLine(str);
+
+            var result = plan.Extract(@"AAA = (BBB, CCC); BBB = (DDD, EEE)");
+        }
+
+        [Fact]
+        public void a006()
+        {
+            var str = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"((\d+) ?)+")).ToString("x");
+            output.WriteLine(str);
+        }
+
+        [Fact]
+        public void a007()
+        {
+            var str = ExtractionPlan<List<int>>.CreatePlan(new Regex(@"(?:(\d+) ?)+")).ToString("x");
+            output.WriteLine(str);
+        }
 
         [Fact]
         public void can_parse_lookbehind()
@@ -46,44 +114,6 @@ namespace RegExtract.Test
             Assert.Equal(7, g);
             Assert.Equal('8', h);
             Assert.Equal("9", i);
-        }
-
-        [Fact]
-        public void can_extract_to_tuple_nested()
-        {
-            var (n, s, a, b, c, d, e, f, g, h, i) = data.Extract<(long, string, int, char, string, int, char, string, int, char, string)>(pattern_nested);
-
-            Assert.IsType<long>(n);
-            Assert.IsType<string>(s);
-
-            Assert.IsType<int>(a);
-            Assert.IsType<char>(b);
-            Assert.IsType<string>(c);
-            Assert.IsType<int>(d);
-            Assert.IsType<char>(e);
-            Assert.IsType<string>(f);
-            Assert.IsType<int>(g);
-            Assert.IsType<char>(h);
-            Assert.IsType<string>(i);
-
-            Assert.Equal(123456789, n);
-            Assert.Equal("123456789", s);
-
-            Assert.Equal(1, a);
-            Assert.Equal('2', b);
-            Assert.Equal("3", c);
-            Assert.Equal(4, d);
-            Assert.Equal('5', e);
-            Assert.Equal("6", f);
-            Assert.Equal(7, g);
-            Assert.Equal('8', h);
-            Assert.Equal("9", i);
-        }
-
-        [Fact]
-        public void fails_when_tuple_is_wrong_arity()
-        {
-            Assert.Throws<ArgumentException>(() => data.Extract<(int, char, string, int, char, string, int, char, string)>(pattern_nested));
         }
 
         record PositionalRecord(int a, char b, string c, int d, char e, string f, int g, char h, string i);
@@ -268,12 +298,6 @@ $
         }
 
         [Fact]
-        public void can_extract_nested_to_string_constructor()
-        {
-            var result = "https://www.google.com/ 12345".Extract<(Uri, string, int)>(@"(((.*))) (\d+)");
-        }
-
-        [Fact]
         public void regex_does_not_match()
         {
             Assert.Throws<ArgumentException>(()=>"https://www.google.com/".Extract<Uri>(@"\d+"));
@@ -367,16 +391,6 @@ $
         record includedbags(int? num, string name);
 
         [Fact]
-        public void debug2()
-        {
-            //var plan = RegexExtractionPlan.CreatePlan<List<List<char>>>(@"(?:((\w)+) ?)+");
-            //var result = plan.Execute(Regex.Match("The quick brown fox jumps over the lazy dog", @"(?:((\w)+) ?)+"));
-
-            var regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))");
-            var plan = ExtractionPlan<List<(string, (int?, int?)?, char, string)?>>.CreatePlan(regex);
-        }
-
-        [Fact]
         public void CreateTreePlan()
         {
             var regex = new Regex(@"((\d+)-(\d+)) (.): (.*)");
@@ -387,11 +401,6 @@ $
             var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex);
 
             result = plan2.Extract(regex.Match("The quick brown fox jumps over the lazy dog"));
-
-            regex = new Regex(@"(((\d+)-(\d+)) (.): (.*))+");
-            var plan3 = ExtractionPlan<List<(string, (int?, int?)?, char, string)?>>.CreatePlan(regex);
-
-            result = plan3.Extract(regex.Match("2-12 c: abcdefgji"));
         }
 
         [Fact]

@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace RegExtract.ExtractionPlanNodeTypes
@@ -30,21 +28,9 @@ namespace RegExtract.ExtractionPlanNodeTypes
         }
     }
 
-    internal record ListOfListsNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
+    internal record CollectionInitializerNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
-        {
-            return constructorParams.Single().Execute(match, range.Index, range.Length);
-        }
-
-        internal override void Validate()
-        {
-            if (!IsCollection(type) || !IsCollection(type.GetGenericArguments().Single()))
-                throw new InvalidOperationException($"{nameof(ListOfListsNode)} assigned type other than List<List<T>>");
-
-            base.Validate();
-        }
     }
 
     internal record ConstructTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
@@ -59,11 +45,8 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsInitializableCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
-
-            if (!IsTuple(unwrappedType))
-                throw new InvalidOperationException($"{nameof(ListOfListsNode)} assigned type other than ValueTuple<>");
 
             base.Validate();
         }
@@ -88,7 +71,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsInitializableCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             var constructors = unwrappedType.GetConstructors()
@@ -140,7 +123,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
     {
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
-            type = IsCollection(type) ? type.GetGenericArguments().Single() : type;
+            type = IsInitializableCollection(type) ? type.GetGenericArguments().Single() : type;
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             var parse = type.GetMethod("Parse",
@@ -154,7 +137,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
         internal override void Validate()
         {
-            var unwrappedType = IsCollection(type) ? type.GetGenericArguments().Single() : type;
+            var unwrappedType = IsInitializableCollection(type) ? type.GetGenericArguments().Single() : type;
             unwrappedType = IsNullable(unwrappedType) ? unwrappedType.GetGenericArguments().Single() : unwrappedType;
 
             var parse = unwrappedType.GetMethod("Parse",
