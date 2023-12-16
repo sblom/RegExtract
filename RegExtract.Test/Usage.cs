@@ -512,7 +512,7 @@ $
             var plan = ExtractionPlan<((int?, int?)?, char, string)?>.CreatePlan(regex);
             object? result = plan.Extract(regex.Match("2-12 c: abcdefgji"));
 
-            regex = new Regex(@"(((\w)+) ?)+");
+            regex = new Regex(@"((\w)+ ?)+");
             var plan2 = ExtractionPlan<List<List<char>>>.CreatePlan(regex);
 
             result = plan2.Extract(regex.Match("The quick brown fox jumps over the lazy dog"));
@@ -521,7 +521,11 @@ $
         [Fact]
         public void deep_tuple_type_tree()
         {
-            var plan = CreateAndLogPlan<(int, (int, int), int, int, int, int, (int, (List<int>, int)), int, int, int, int, int, int, int, int)>(@"(\d+) ((\d+) (\d+)) (\d+) (\d+) (\d+) (\d+) ((\d+) ((\d+ ?)+ (\d+))) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)");
+            var plan = CreateAndLogPlan<(int, (int, int), int, int, int, int, (int, (List<int>, int)), int, int, int, int, int, int, int, int)>(@"(\d+) \(((\d+) (\d+))\) (\d+) (\d+) (\d+) (\d+) ((\d+) \(((\d+ ?)+ (\d+))\)) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)");
+
+            var result = plan.Extract("1 (2 3) 4 5 6 7 8 (9 10 11 12 13) 14 15 16 17 18 19 20 21");
+
+            Assert.Equivalent((1, (2, 3), 4, 5, 6, 7, (8, (new List<int> { 9, 10, 11, 12 }, 13)), 14, 15, 16, 17, 18, 19, 20, 21), result);
         }
 
         [Fact]

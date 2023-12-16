@@ -14,7 +14,6 @@ namespace RegExtract
     {
         public ExtractionPlanNode Plan { get; protected set; }
         RegexCaptureGroupTree? _tree;
-        Stack<Type> _typeStack = new();
 
         protected ExtractionPlan()
         {
@@ -148,7 +147,7 @@ namespace RegExtract
             return AssignTypesToTree(tree, type);
         }
 
-        ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum, int paramCount, Stack<RegexCaptureGroupNode>? stack)
+        ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum, int paramCount)
         {
             if (IsNullable(type))
             {
@@ -173,7 +172,7 @@ namespace RegExtract
             {
                 try
                 {
-                    type = GetTupleArgumentsList(type)[paramNum];
+                    type = type.GetGenericArguments()[paramNum];
                 }
                 catch (IndexOutOfRangeException)
                 {
@@ -194,10 +193,31 @@ namespace RegExtract
                 }
             }
 
-            return AssignTypesToTree(tree, type, stack);
+            return AssignTypesToTree(tree, type);
         }
 
-        private ExtractionPlanNode AssignTypesToTree(RegexCaptureGroupNode tree, Type type, Stack<RegexCaptureGroupNode>? stack = null)
+        ExtractionPlanNode BindTupleConstructorPlan(string name, IEnumerable<RegexCaptureGroupNode> nodes, Type tupleType)
+        {
+            var typeArgs = IsNullable(tupleType) ? tupleType.GetGenericArguments().Single().GetGenericArguments() : tupleType.GetGenericArguments();
+
+            List<ExtractionPlanNode> groups = new();
+
+            foreach (var (node, type, idx) in nodes.Zip(typeArgs, (n, t) => (n,t)).Select(((x,i) => (x.n, x.t, i))))
+            {
+                if (idx < 7)
+                {
+                    groups.Add(BindConstructorPlan(node, tupleType, idx, typeArgs.Length));
+                }
+                else
+                {
+                    groups.Add(BindTupleConstructorPlan(name, nodes.Skip(7), type));
+                }
+            }
+
+            return ExtractionPlanNode.Bind(name, tupleType, groups.ToArray(), new ExtractionPlanNode[0]);
+        }
+
+        private ExtractionPlanNode AssignTypesToTree(RegexCaptureGroupNode tree, Type type)
         {
             var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
@@ -206,31 +226,15 @@ namespace RegExtract
 
             if (IsDirectlyConstructable(type))
             {
-                if (tree.children.Any())
+                if (tree.children.Count() == 1)
                 {
                     return new VirtualUnaryTupleNode(tree.name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
                 }
                 return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
             }
-            else if (IsTuple(unwrappedType) && GetTupleArgumentsList(unwrappedType).Count() > tree.children.Where(child => int.TryParse(child.name, out var _)).Count())
+            else if (IsTuple(unwrappedType))
             {
-                stack = new Stack<RegexCaptureGroupNode>(tree.children.Reverse());
-
-                while (stack.Any())
-                {
-                    //var tupleParamCount = IsTuple(type) ? type.
-                    RegexCaptureGroupNode node = stack.Pop();
-
-                    if (int.TryParse(node.name, out var num))
-                    {
-                        var plan = BindConstructorPlan(node, type, groups.Count, GetTupleArgumentsList(type).Count(), stack);
-                        groups.Add(plan);
-                    }
-                    else
-                    {
-                        namedgroups.Add(BindPropertyPlan(node, type, node.name));
-                    }
-                }
+                return BindTupleConstructorPlan(tree.name, tree.children, type);
             }
             else if (IsInitializableCollection(type))
             {
@@ -243,12 +247,12 @@ namespace RegExtract
 
                 if (typeParams.Length < 2 && !IsInitializableCollection(typeParams.FirstOrDefault()))
                 {
-                    return ExtractionPlanNode.Bind(tree.name, type, new[] { BindConstructorPlan(tree, type, 0, 1, stack) }, new ExtractionPlanNode[0]);
+                    return ExtractionPlanNode.Bind(tree.name, type, new[] { BindConstructorPlan(tree, type, 0, 1) }, new ExtractionPlanNode[0]);
                 }
 
                 foreach (var node in tree.children)
                 {
-                    var plan = BindConstructorPlan(node, type, groups.Count, tree.NumberedGroups.Count(), stack);
+                    var plan = BindConstructorPlan(node, type, groups.Count, tree.NumberedGroups.Count());
                     groups.Add(plan);
                 }
                 // TODO: assert that there are no named groups
@@ -259,7 +263,7 @@ namespace RegExtract
                 {
                     if (int.TryParse(node.name, out var num))
                     {
-                        var plan = BindConstructorPlan(node, type, groups.Count, tree.NumberedGroups.Count(), stack);
+                        var plan = BindConstructorPlan(node, type, groups.Count, tree.NumberedGroups.Count());
                         groups.Add(plan);
                     }
                     else

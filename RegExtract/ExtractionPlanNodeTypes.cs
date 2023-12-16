@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -36,6 +37,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
         {
             var genericArgs = type.GetGenericArguments();
 
+            // TODO: Create a pre-sized collection
             var vals = Activator.CreateInstance(type);
             var addMethod = type.GetMethod("Add");
 
@@ -73,31 +75,12 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record ConstructTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        private object CreateGenericTuple(Type tupleType, IEnumerable<object?> vals)
-        {
-            var typeArgs = tupleType.GetGenericArguments();
-            var constructor = tupleType.GetConstructor(tupleType.GetGenericArguments());
-
-            if (typeArgs.Count() < 8 && vals.Count() != typeArgs.Count())
-                throw new ArgumentException($"Number of capture groups doesn't match tuple arity.");
-
-            if (typeArgs.Count() <= 7)
-            {
-                return constructor.Invoke(vals.ToArray());
-            }
-            else
-            {
-                return constructor.Invoke(vals.Take(7)
-                          .Concat(new[] { CreateGenericTuple(typeArgs[7], vals.Skip(7)) })
-                          .ToArray());
-            }
-        }
-
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            var constructor = type.GetConstructor(type.GetGenericArguments());
 
-            return CreateGenericTuple(type, constructorParams.Select(i => i.Execute(match, range.Index, range.Length)));
+            return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
         }
 
         internal override void Validate()
@@ -112,16 +95,19 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record ConstructorNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
+        ConstructorInfo? _constructor = null;
+
+        ConstructorInfo constructor
+        {
+            get
+            {
+                return _constructor ?? (_constructor = type.GetConstructors().Where(cons => cons.GetParameters().Length == constructorParams.Length).Single());
+            }
+        }
+
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-
-            var constructors = type.GetConstructors()
-                .Where(cons => cons.GetParameters().Length == constructorParams.Length);
-
-            var constructor = constructors.Single();
-
-            var paramTypes = constructor.GetParameters().Select(x => x.ParameterType);
 
             return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
         }
@@ -153,12 +139,20 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record StringConstructorNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
+        ConstructorInfo? _constructor = null;
+
+        ConstructorInfo constructor
+        {
+            get
+            {
+                return _constructor ?? (_constructor = (IsNullable(type) ? type.GetGenericArguments().Single() : type).GetConstructor(new[] { typeof(string) }));
+            }
+        }
+
+
         internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
         {
-            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-
-            var constructor = type.GetConstructor(new[] { typeof(string) });
-
+            Debug.Assert(type == this.type);
             return constructor.Invoke(new[] { range.Value });
         }
 
@@ -178,16 +172,24 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record StaticParseMethodNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
-        {
-            type = IsInitializableCollection(type) ? type.GetGenericArguments().Single() : type;
-            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+        MethodInfo? _parse = null;
 
-            var parse = type.GetMethod("Parse",
+        MethodInfo parse
+        {
+            get
+            {
+                return _parse ?? (_parse = (IsNullable(type) ? type.GetGenericArguments().Single() : type)
+                    .GetMethod("Parse",
                             BindingFlags.Static | BindingFlags.Public,
                             null,
                             new Type[] { typeof(string) },
-                            null);
+                            null));
+            }
+        }
+
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        {
+            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
             return parse.Invoke(null, new object[] { range.Value });
         }
