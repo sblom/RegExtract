@@ -85,7 +85,7 @@ namespace RegExtract
         public static IEnumerable<T> Extract<T>(this IEnumerable<string> str, Regex rx, RegExtractOptions options = RegExtractOptions.None)
         {
             var plan = ExtractionPlan<T>.CreatePlan(rx, options);
-            return str.Select(s => plan.Extract(rx.Match(s)));
+            return str.SelectMany(s => rx.Matches(s).AsEnumerable().Select(match => plan.Extract(match)));
         }
     }
 }

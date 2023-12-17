@@ -154,7 +154,7 @@ namespace RegExtract
         {
             if (!cache.ContainsKey(groupName))
             {
-                cache[groupName] = AsEnumerable(match.Groups[groupName].Captures)
+                cache[groupName] = match.Groups[groupName].Captures.AsEnumerable()
                     .Select(cap => (cap.Value, cap.Index, cap.Length))
                     .ToArray();
             }
@@ -224,12 +224,23 @@ namespace RegExtract
         {
             return type.FullName.StartsWith(NULLABLE_TYPENAME);
         }
+    }
 
-        protected static IEnumerable<Capture> AsEnumerable(CaptureCollection cc)
+    internal static class Helpers
+    {
+        internal static IEnumerable<Capture> AsEnumerable(this CaptureCollection cc)
         {
             foreach (Capture c in cc)
             {
                 yield return c;
+            }
+        }
+
+        internal static IEnumerable<Match> AsEnumerable(this MatchCollection mc)
+        {
+            foreach (Match m in mc)
+            {
+                yield return m;
             }
         }
     }
