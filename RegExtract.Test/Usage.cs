@@ -299,10 +299,10 @@ $
         public void can_extract_single_item()
         {
             var output = "asdf".Extract<string>("(.*)");
-            Assert.Equal(output, "asdf");
+            Assert.Equal("asdf", output);
 
             var n = "2023".Extract<int>(@"(\d+)");
-            Assert.Equal(n, 2023);
+            Assert.Equal(2023, n);
         }
 
         [Fact]
@@ -395,10 +395,20 @@ $
         [Fact]
         public void nested_extraction()
         {
+            // TODO: Why is this so much slower than nested_extraction_control?
             var result = "2-12 c: abcdefg".Extract<(bounds, char, string)>(@"((\d+)-(\d+)) (.): (.*)");
 
             Assert.Equal((new bounds(2, 12), 'c', "abcdefg"), result);
         }
+
+        [Fact]
+        public void nested_extraction_control()
+        {
+            var result = "2-12 c: abcdefg".Extract<((int lo, int hi), char ch, string str)>(@"((\d+)-(\d+)) (.): (.*)");
+
+            Assert.Equal(((2, 12), 'c', "abcdefg"), result);
+        }
+
 
         [Fact]
         public void nested_extraction_of_list()

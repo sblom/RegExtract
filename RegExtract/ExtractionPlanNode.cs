@@ -145,20 +145,27 @@ namespace RegExtract
             return;
         }
 
-        internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             throw new InvalidOperationException("Can't construct a node based on base ExtractionPlanNode type.");
         }
 
-        protected IEnumerable<(string Value, int Index, int Length)> Ranges(Match match, string groupName, int captureStart, int captureLength) => AsEnumerable(match.Groups[groupName].Captures)
-                  .Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength)
-                  .Select(cap => (cap.Value, cap.Index, cap.Length));
+        protected IEnumerable<(string Value, int Index, int Length)> Ranges(Match match, string groupName, int captureStart, int captureLength, Dictionary<string, (string Value, int Index, int Length)[]> cache)
+        {
+            if (!cache.ContainsKey(groupName))
+            {
+                cache[groupName] = AsEnumerable(match.Groups[groupName].Captures)
+                    .Select(cap => (cap.Value, cap.Index, cap.Length))
+                    .ToArray();
+            }
+            return cache[groupName].Where(cap => cap.Index >= captureStart && cap.Index + cap.Length <= captureStart + captureLength);
+        }
 
-        internal virtual object? Execute(Match match, int captureStart, int captureLength)
+        internal virtual object? Execute(Match match, int captureStart, int captureLength, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             object? result = null;
 
-            var ranges = Ranges(match, groupName, captureStart, captureLength);
+            var ranges = Ranges(match, groupName, captureStart, captureLength, cache).ToArray();
 
             Type innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
@@ -171,13 +178,13 @@ namespace RegExtract
             {
                 var lastRange = ranges.Last();
 
-                result = Construct(match, innerType, lastRange);
+                result = Construct(match, innerType, lastRange, cache);
 
                 if (result is not null)
                 {
                     foreach (var prop in propertyNodes)
                     {
-                        result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length) });
+                        result.GetType().GetProperty(prop.groupName).GetSetMethod().Invoke(result, new[] { prop.Execute(match, lastRange.Index, lastRange.Length, cache) });
                     }
                 }
             }
@@ -192,7 +199,9 @@ namespace RegExtract
                 throw new ArgumentException("Regex didn't match.");
             }
 
-            return Execute(match, match.Groups[groupName].Index, match.Groups[groupName].Length);
+            Dictionary<string, (string Value, int Index, int Length)[]> cache = new();
+
+            return Execute(match, match.Groups[groupName].Index, match.Groups[groupName].Length, cache);
         }
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";

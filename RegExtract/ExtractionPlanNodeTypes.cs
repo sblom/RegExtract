@@ -10,7 +10,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record UninitializedNode() :
         ExtractionPlanNode("", typeof(void), new ExtractionPlanNode[0], new ExtractionPlanNode[0])
     {
-        internal override object? Execute(Match match, int captureStart, int captureLength)
+        internal override object? Execute(Match match, int captureStart, int captureLength, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             throw new InvalidOperationException("Extraction plan was not initialized before execution.");
         }
@@ -19,9 +19,9 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record VirtualUnaryTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Execute(Match match, int captureStart, int captureLength)
+        internal override object? Execute(Match match, int captureStart, int captureLength, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
-            return constructorParams.Single().Execute(match, captureStart, captureLength);
+            return constructorParams.Single().Execute(match, captureStart, captureLength, cache);
         }
 
         internal override void Validate()
@@ -33,7 +33,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record CollectionInitializerNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Execute(Match match, int captureStart, int captureLength)
+        internal override object? Execute(Match match, int captureStart, int captureLength, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             var genericArgs = type.GetGenericArguments();
 
@@ -43,7 +43,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
 
             object?[] itemVals = new object[genericArgs.Length];
 
-            var rangeArray = constructorParams.Select(c => Ranges(match, groupName, captureStart, captureLength).GetEnumerator()).ToArray();
+            var rangeArray = constructorParams.Select(c => Ranges(match, groupName, captureStart, captureLength, cache).GetEnumerator()).ToArray();
 
             do
             {
@@ -51,7 +51,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
                 {
                     if (rangeArray[i].MoveNext())
                     {
-                        itemVals[i] = constructorParams[i].Execute(match, rangeArray[i].Current.Index, rangeArray[i].Current.Length);
+                        itemVals[i] = constructorParams[i].Execute(match, rangeArray[i].Current.Index, rangeArray[i].Current.Length, cache);
                     }
                     else
                     {
@@ -75,12 +75,27 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record ConstructTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        ConstructorInfo? _constructor = null;
+
+        ConstructorInfo constructor
+        {
+            get
+            {
+                if (_constructor != null) return _constructor;
+                else
+                {
+                    var wrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+                    return (_constructor = wrappedType.GetConstructor(wrappedType.GetGenericArguments()));
+                }
+            }
+        }
+
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
             var constructor = type.GetConstructor(type.GetGenericArguments());
 
-            return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
+            return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length, cache)).ToArray());
         }
 
         internal override void Validate()
@@ -101,15 +116,13 @@ namespace RegExtract.ExtractionPlanNodeTypes
         {
             get
             {
-                return _constructor ?? (_constructor = type.GetConstructors().Where(cons => cons.GetParameters().Length == constructorParams.Length).Single());
+                return _constructor ?? (_constructor = (IsNullable(type) ? type.GetGenericArguments().Single() : type).GetConstructors().Where(cons => cons.GetParameters().Length == constructorParams.Length).Single());
             }
         }
 
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
-            type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-
-            return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length)).ToArray());
+            return constructor.Invoke(constructorParams.Select(i => i.Execute(match, range.Index, range.Length, cache)).ToArray());
         }
 
         internal override void Validate()
@@ -130,7 +143,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record EnumParseNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             return Enum.Parse(type, range.Value);
         }
@@ -150,7 +163,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
         }
 
 
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             Debug.Assert(type == this.type);
             return constructor.Invoke(new[] { range.Value });
@@ -187,7 +200,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
             }
         }
 
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             type = IsNullable(type) ? type.GetGenericArguments().Single() : type;
 
@@ -215,7 +228,7 @@ namespace RegExtract.ExtractionPlanNodeTypes
     internal record StringCastNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
-        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range)
+        internal override object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             return range.Value;
         }
