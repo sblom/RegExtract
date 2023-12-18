@@ -455,6 +455,8 @@ $
             var plan = ExtractionPlan<((int, int), char, string)>.CreatePlan(regex);
             var result = plan.Extract(match);
 
+            output.WriteLine(plan.ToString("x"));
+
             Assert.Equal(((2, 12), 'c', "abcdefg"), result);
         }
 
