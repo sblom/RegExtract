@@ -133,6 +133,16 @@ namespace RegExtract.Test
         }
 
         [Fact]
+        public void a011()
+        {
+            var plan = CreateAndLogPlan<((char? type, string name) module, List<string> outputs)>(/* language=regex */@"^(([%&])?([a-z]+)) -> (([a-z]+),? ?)+$");
+
+            var result = plan.Extract("&kx -> zs, br, jd, bj, vg");
+
+            Assert.Equivalent((('&', "kx"), new List<string>() { "zs", "br", "jd", "bj", "vg"}), result);
+        }
+
+        [Fact]
         public void slow()
         {
             var plan = ExtractionPlan<List<(string, string)>>.CreatePlan(new Regex(/* language=regex */@"(([a-z]+)([=-].?),?)+"));

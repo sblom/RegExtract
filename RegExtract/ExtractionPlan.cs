@@ -226,10 +226,12 @@ namespace RegExtract
 
             if (IsDirectlyConstructable(type))
             {
+                // We're at a leaf--if there's an inner capture group, use it instead of everything.
                 if (tree.children.Count() == 1)
                 {
-                    return new VirtualUnaryTupleNode(tree.name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
+                    tree = tree.children.Single();
                 }
+
                 return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
             }
             else if (IsTuple(unwrappedType))
