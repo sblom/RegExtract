@@ -146,6 +146,30 @@ namespace RegExtract.RegexTools
                         else
                         {
                             if (myname == "0") throw new Exception("Too many close parens.");
+                            if (loc + 1 < _regexString.Length)
+                            {
+                                if (_regexString[loc + 1] is '?' or '+' or '*')
+                                {
+                                    loc++;
+                                    if (loc + 1 < _regexString.Length && _regexString[loc + 1] is '?')
+                                        loc++;
+                                }
+                                else if (_regexString[loc + 1] is '{')
+                                {
+                                    var startloc = loc;
+                                    // TODO: The actual regex grammar will bag out of this if the quantifier doesn't actually parse.
+                                    while (loc < _regexString.Length && _regexString[loc] is not '}')
+                                    {
+                                        loc++;
+                                    }
+                                    if (loc >= _regexString.Length || _regexString[loc] is not '}')
+                                    {
+                                        loc = startloc;
+                                    }
+                                    else if (loc + 1 < _regexString.Length && _regexString[loc + 1] is '?')
+                                        loc++;
+                                }
+                            }
                             return new RegexCaptureGroupNode(myname, children.ToArray(), ((start, loc - start + 1),_regexString.Substring(start, loc - start + 1)));
                         }
                     case '[':
