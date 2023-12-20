@@ -12,7 +12,7 @@ namespace RegExtract
 {
     public class ExtractionPlan<T>: IFormattable
     {
-        public ExtractionPlanNode Plan { get; protected set; }
+        ExtractionPlanNode Plan { get; set; }
         RegexCaptureGroupTree? _tree;
 
         protected ExtractionPlan()
@@ -226,7 +226,8 @@ namespace RegExtract
 
             if (IsDirectlyConstructable(type))
             {
-                // We're at a leaf--if there's an inner capture group, use it instead of everything.
+                // We're at a leaf in the type hierarchy, and all we need is a string.
+                // If there's an inner capture group, use it to narrow the match.
                 if (tree.children.Count() == 1)
                 {
                     tree = tree.children.Single();
@@ -244,7 +245,7 @@ namespace RegExtract
 
                 if (tree.name == "0")
                 {
-                    return new VirtualUnaryTupleNode(tree.name, type, new[] { AssignTypesToTree(tree.children.Single(), type) }, new ExtractionPlanNode[0]);
+                    return AssignTypesToTree(tree.children.Single(), type);
                 }
 
                 if (typeParams.Length < 2 && !IsInitializableCollection(typeParams.FirstOrDefault()))

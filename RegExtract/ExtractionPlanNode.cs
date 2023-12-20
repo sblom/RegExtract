@@ -192,7 +192,7 @@ namespace RegExtract
             return result;
         }
 
-        public object? Execute(Match match)
+        internal object? Execute(Match match)
         {
             if (!match.Success)
             {
@@ -201,7 +201,7 @@ namespace RegExtract
 
             Dictionary<string, (string Value, int Index, int Length)[]> cache = new();
 
-            return Execute(match, match.Groups[groupName].Index, match.Groups[groupName].Length, cache);
+            return Execute(match, match.Groups[0].Index, match.Groups[0].Length, cache);
         }
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";

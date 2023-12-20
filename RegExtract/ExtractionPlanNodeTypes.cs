@@ -16,20 +16,6 @@ namespace RegExtract.ExtractionPlanNodeTypes
         }
     }
 
-    internal record VirtualUnaryTupleNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
-        ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
-    {
-        internal override object? Execute(Match match, int captureStart, int captureLength, Dictionary<string, (string Value, int Index, int Length)[]> cache)
-        {
-            return constructorParams.Single().Execute(match, captureStart, captureLength, cache);
-        }
-
-        internal override void Validate()
-        {
-            base.Validate();
-        }
-    }
-
     internal record CollectionInitializerNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters) :
         ExtractionPlanNode(groupName, type, constructorParams, propertySetters)
     {
