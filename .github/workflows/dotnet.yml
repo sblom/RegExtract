@@ -38,7 +38,7 @@ jobs:
             --configuration Release \
             --no-build \
             --no-restore \
-            -p:PackageVersion="${{ steps.gitversion.outputs.fullSemVer }}" \
+            -p:PackageVersion="${{ env.GitVersion_FullSemVer }}" \
             RegExtract/RegExtract.csproj \
             --output ${{ github.workspace }}/nugets/
       - uses: actions/upload-artifact@v2
