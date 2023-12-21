@@ -157,17 +157,42 @@ namespace RegExtract.RegexTools
                                 else if (_regexString[loc + 1] is '{')
                                 {
                                     var startloc = loc;
-                                    // TODO: The actual regex grammar will bag out of this if the quantifier doesn't actually parse.
-                                    while (loc < _regexString.Length && _regexString[loc] is not '}')
+                                    var quantifierState = 0;
+                                    loc ++;
+                                    while (loc < _regexString.Length - 1 && quantifierState >= 0)
                                     {
                                         loc++;
+                                        switch (quantifierState, _regexString[loc])
+                                        {
+                                            case (0, >= '0' and <= '9'):
+                                                quantifierState = 1;
+                                                break;
+                                            case (1 or 2, >= '0' and <= '9'):
+                                                break;
+                                            case (1, ','):
+                                                quantifierState = 2;
+                                                break;
+                                            case (1 or 2, '}'):
+                                                quantifierState = 3;
+                                                break;
+                                            default:
+                                                quantifierState = -1;
+                                                break;
+                                        }
+
+                                        if (quantifierState == 3)
+                                        {
+                                            if (loc < _regexString.Length - 1 && _regexString[loc + 1] is '?')
+                                                loc++;
+
+                                            break;
+                                        }
+                                        else if (loc >= _regexString.Length - 1 || quantifierState == -1)
+                                        {
+                                            loc = startloc;
+                                            break;
+                                        }
                                     }
-                                    if (loc >= _regexString.Length || _regexString[loc] is not '}')
-                                    {
-                                        loc = startloc;
-                                    }
-                                    else if (loc + 1 < _regexString.Length && _regexString[loc + 1] is '?')
-                                        loc++;
                                 }
                             }
                             return new RegexCaptureGroupNode(myname, children.ToArray(), ((start, loc - start + 1),_regexString.Substring(start, loc - start + 1)));

@@ -5,6 +5,7 @@ using Xunit;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Xunit.Abstractions;
+using RegExtract.RegexTools;
 
 namespace RegExtract.Test
 {
@@ -140,6 +141,83 @@ namespace RegExtract.Test
             var result = plan.Extract("&kx -> zs, br, jd, bj, vg");
 
             Assert.Equivalent((('&', "kx"), new List<string>() { "zs", "br", "jd", "bj", "vg"}), result);
+        }
+
+        record Rule()
+        {
+            public static Rule? Parse(string str)
+            {
+                if (str.Contains(":"))
+                    return str.Extract<Conditional>();
+                else
+                    return str.Extract<Absolute>();
+            }
+        }
+
+        record Absolute(Action step) : Rule
+        {
+            public const string REGEXTRACT_REGEX_PATTERN = @"(.*)";
+        }
+        record Conditional(Condition cond, Action step) : Rule
+        {
+            public const string REGEXTRACT_REGEX_PATTERN = @"((.)([<>])(\d+)):(\w+)";
+        }
+        record Condition(char prop, char test, int val);
+
+        record Action
+        {
+            public static Action Parse(string str)
+            {
+                return str switch
+                {
+                    "A" => new Accept(),
+                    "R" => new Reject(),
+                    _ => new Workflow(str)
+                };
+            }
+        }
+        record Accept : Action;
+        record Reject : Action;
+        record Workflow(string workflow) : Action;
+
+        [Fact]
+        public void a012()
+        {
+            var plan = CreateAndLogPlan<(string workflow, List<Rule> rules) >(/* language=regex */@"(\w+){(([^,]+),?)+}");
+
+            var result = plan.Extract("sxc{x>2414:jtp,s>954:R,m>2406:A,xfz}");
+
+            Assert.Equivalent(("sxc", new List<Rule> { new Conditional(new Condition('x', '>', 2414), new Workflow("jtp")), new Conditional(new Condition('s', '>', 954), new Reject()), new Conditional(new Condition('m', '>', 2406), new Accept()), new Absolute(new Workflow("xfz")) }), result);
+        }
+
+        [Fact]
+        public void a013()
+        {
+            var 
+            tree = new RegexCaptureGroupTree(new Regex("(asdf){}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){01"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){01}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){01,}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){1,2}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){1,2}?"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){,12}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){1\,2}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){\1,2}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf)\{1}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){1\}"));
+            output.WriteLine(tree.TreeViz());
+            tree = new RegexCaptureGroupTree(new Regex(@"(asdf){,}"));
+            output.WriteLine(tree.TreeViz());
         }
 
         [Fact]
@@ -513,8 +591,8 @@ $
             //var result = plan.Execute(Regex.Match(data, @"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$"));
 
             Regex rx;
-            var plan = ExtractionPlan<bagdescription>.CreatePlan(rx = new Regex(@"^(?<name>.+) bags contain(?: (?<none>no other bags)\.| (?<contents>(\d+) (.*?)) bags?[,.])+$"));
-            var result = plan.Extract(rx.Match("faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags."));
+            var plan = CreateAndLogPlan<bagdescription>(/* language=regex */@"^(?<name>.+) bags contain(?: (?<none>no other bags)\.| (?<contents>(\d+) (.*?)) bags?[,.])+$");
+            var result = plan.Extract("faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.");
 
             Assert.Equivalent(new bagdescription { name = "faded yellow", contents = new List<includedbags> { new includedbags(4, "mirrored fuchsia"), new includedbags(4, "dotted indigo"), new includedbags(3, "faded orange"), new includedbags(5, "plaid crimson") } }, result);
         }
