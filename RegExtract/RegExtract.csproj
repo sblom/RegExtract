@@ -54,8 +54,7 @@ See more docs at project page: https://github.com/sblom/RegExtract
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
       <_Parameter1>RegExtract.Test</_Parameter1>
     </AssemblyAttribute>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute"
-                       Condition="'$(Configuration)' == 'Debug'">
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute" Condition="'$(Configuration)' == 'Debug'">
       <_Parameter1>LINQPadQuery</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
@@ -75,6 +74,13 @@ See more docs at project page: https://github.com/sblom/RegExtract
 
   <ItemGroup Condition="'$(TargetFramework)' == 'NET40'">
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PolySharp" Version="1.14.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>
