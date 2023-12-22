@@ -9,7 +9,7 @@ using RegExtract.ExtractionPlanNodeTypes;
 
 namespace RegExtract
 {
-    public record ExtractionPlanNode(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertyNodes)
+    internal record ExtractionPlanNode(string groupName, ExtractionPlanTypeWrapper type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertyNodes)
     {
         public string ShowPlanTree()
         {
@@ -36,9 +36,9 @@ namespace RegExtract
             return builder.ToString();
         }
 
-        string FriendlyTypeName(Type type)
+        string FriendlyTypeName(ExtractionPlanTypeWrapper type)
         {
-            var keyword = type.Name switch
+            var keyword = type.Type.Name switch
             {
                 "Byte" => "byte",
                 "SByte" => "sbyte",
@@ -58,42 +58,42 @@ namespace RegExtract
 
             if (keyword is not null) return keyword;
 
-            if (IsNullable(type)) return FriendlyTypeName(type.GetGenericArguments().Single()) + "?";
+            if (type.IsNullable) return FriendlyTypeName(type.NonNullableType) + "?";
 
-            var args = type.GetGenericArguments();
+            var args = type.GenericArguments;
 
-            if (IsTuple(type)) return "(" + String.Join(",", args.Select(arg => FriendlyTypeName(arg))) + ")";
+            if (type.IsTuple) return "(" + String.Join(",", args.Select(arg => ExtractionPlanTypeWrapper.Wrap(arg))) + ")";
 
             if (args.Any())
             {
-                return type.Name.Split('`')[0] + "<" + String.Join(",", args.Select(arg => FriendlyTypeName(arg))) + ">";
+                return type.Type.Name.Split('`')[0] + "<" + String.Join(",", args.Select(arg => ExtractionPlanTypeWrapper.Wrap(arg))) + ">";
             }
 
-            else return type.Name;
+            else return type.Type.Name;
         }
 
-        internal static ExtractionPlanNode Bind(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
+        internal static ExtractionPlanNode Bind(string groupName, ExtractionPlanTypeWrapper type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
-            var innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            var innerType = type.NonNullableType;
 
-            var multiConstructor = innerType.GetConstructors()
+            var multiConstructor = innerType.Constructors
                 .Where(cons => cons.GetParameters().Length == constructorParams.Length);
 
-            var staticParseMethod = innerType.GetMethod("Parse",
+            var staticParseMethod = innerType.Type.GetMethod("Parse",
                                         BindingFlags.Static | BindingFlags.Public,
                                         null,
                                         new Type[] { typeof(string) },
                                         null);
 
-            var stringConstructor = innerType.GetConstructor(new[] { typeof(string) });
+            var stringConstructor = innerType.Type.GetConstructor(new[] { typeof(string) });
 
 
 
             ExtractionPlanNode node;
 
-            if (IsInitializableCollection(innerType))
+            if (type.IsInitializableCollection)
                 node = new CollectionInitializerNode(groupName, type, constructorParams, propertySetters);
-            else if (IsTuple(innerType))
+            else if (innerType.IsTuple)
                 node = new ConstructTupleNode(groupName, type, constructorParams, propertySetters);
             else if (multiConstructor.Count() == 1 && (constructorParams.Any() || propertySetters.Any()))
                 node = new ConstructorNode(groupName, type, constructorParams, propertySetters);
@@ -107,29 +107,29 @@ namespace RegExtract
             return node;
         }
 
-        internal static ExtractionPlanNode BindLeaf(string groupName, Type type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
+        internal static ExtractionPlanNode BindLeaf(string groupName, ExtractionPlanTypeWrapper type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)
         {
-            var innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
+            var innerType = type.NonNullableType;
 
-            var staticParseMethod = innerType.GetMethod("Parse",
+            var staticParseMethod = innerType.Type.GetMethod("Parse",
                                         BindingFlags.Static | BindingFlags.Public,
                                         null,
                                         new Type[] { typeof(string) },
                                         null);
 
-            var stringConstructor = innerType.GetConstructor(new[] { typeof(string) });
+            var stringConstructor = innerType.Type.GetConstructor(new[] { typeof(string) });
 
 
 
             ExtractionPlanNode node;
 
-            if (IsTuple(innerType))
+            if (innerType.IsTuple)
                 throw new ArgumentException("Tuple in type cannot be bound to leaf of regex capture group tree.");
             else if (staticParseMethod is not null)
                 node = new StaticParseMethodNode(groupName, type, constructorParams, propertySetters);
             else if (stringConstructor is not null)
                 node = new StringConstructorNode(groupName, type, constructorParams, propertySetters);
-            else if (innerType.BaseType == typeof(Enum))
+            else if (innerType.Type.BaseType == typeof(Enum))
                 node = new EnumParseNode(groupName, type, constructorParams, propertySetters);
             else
                 node = new StringCastNode(groupName, type, constructorParams, propertySetters);
@@ -145,7 +145,7 @@ namespace RegExtract
             return;
         }
 
-        internal virtual object? Construct(Match match, Type type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
+        internal virtual object? Construct(Match match, ExtractionPlanTypeWrapper type, (string Value, int Index, int Length) range, Dictionary<string, (string Value, int Index, int Length)[]> cache)
         {
             throw new InvalidOperationException("Can't construct a node based on base ExtractionPlanNode type.");
         }
@@ -167,18 +167,16 @@ namespace RegExtract
 
             var ranges = Ranges(match, groupName, captureStart, captureLength, cache).ToArray();
 
-            Type innerType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-
             if (!ranges.Any())
             {
-                if (type.IsClass || Nullable.GetUnderlyingType(type) != null) return null;
-                else return Convert.ChangeType(null, type);
+                if (type.Type.IsClass || Nullable.GetUnderlyingType(type.Type) != null) return null;
+                else return Convert.ChangeType(null, type.Type);
             }
             else
             {
                 var lastRange = ranges.Last();
 
-                result = Construct(match, innerType, lastRange, cache);
+                result = Construct(match, type.NonNullableType, lastRange, cache);
 
                 if (result is not null)
                 {
@@ -206,24 +204,6 @@ namespace RegExtract
 
         protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
         protected const string NULLABLE_TYPENAME = "System.Nullable`";
-
-        protected static bool IsInitializableCollection(Type type)
-        {
-            var genericParameters = type.GetGenericArguments();
-            var addMethod = type.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, genericParameters, null);
-
-            return type.GetInterfaces().Any(i => i == typeof(IEnumerable)) && addMethod != null;
-        }
-
-        protected static bool IsTuple(Type type)
-        {
-            return type.FullName.StartsWith(VALUETUPLE_TYPENAME);
-        }
-
-        protected static bool IsNullable(Type type)
-        {
-            return type.FullName.StartsWith(NULLABLE_TYPENAME);
-        }
 
         protected static IEnumerable<Capture> AsEnumerable(CaptureCollection cc)
         {

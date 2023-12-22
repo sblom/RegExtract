@@ -41,142 +41,52 @@ namespace RegExtract
         internal void InitializePlan(Regex regex)
         {
             _tree = new RegexCaptureGroupTree(regex);
-            Type type = typeof(T);
+            var type = ExtractionPlanTypeWrapper.Wrap(typeof(T));
 
             Plan = AssignTypesToTree(_tree.Tree, type);
         }
 
 
-        protected const string VALUETUPLE_TYPENAME = "System.ValueTuple`";
-        protected const string NULLABLE_TYPENAME = "System.Nullable`";
-
-        // We use C#'s definition of an initializable collection, which is any type that implements IEnumerable and has a public Add() method.
-        // In our case, we also require that the Add() method has parameters of the same type as the collection's generic parameters.
-        protected bool IsInitializableCollection(Type? type)
+        ExtractionPlanNode BindPropertyPlan(RegexCaptureGroupNode tree, ExtractionPlanTypeWrapper type, string name)
         {
-            if (type == null)
-                return false;
-            var genericParameters = type.GetGenericArguments();
-            var addMethod = type.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, genericParameters, null);
+            type = type.NonNullableType;
 
-            return type.GetInterfaces().Any(i => i == typeof(IEnumerable)) && addMethod != null;
-        }
-
-        protected bool IsTuple(Type type)
-        {
-            return type.FullName.StartsWith(VALUETUPLE_TYPENAME);
-        }
-
-        protected bool IsNullable(Type type)
-        {
-            return type.FullName.StartsWith(NULLABLE_TYPENAME);
-        }
-
-        private bool IsContainerOfSize(Type type, int numParams)
-        {
-            var constructors = type.GetConstructors()
-                .Where(cons => cons.GetParameters().Length == numParams);
-
-            return constructors.Count() == 1;
-        }
-
-        protected bool IsDirectlyConstructable(Type type)
-        {
-            if (type == typeof(string))
-            {
-                return true;
-            }
-
-            if (IsNullable(type))
-            {
-                type = type.GetGenericArguments().Single();
-            }
-
-            if (IsTuple(type))
-            {
-                return false;
-            }
-
-            var parse = type.GetMethod("Parse",
-                            BindingFlags.Static | BindingFlags.Public,
-                            null,
-                            new Type[] { typeof(string) },
-                            null);
-
-            if (parse is not null)
-            {
-                return true;
-            }
-
-            if (type.BaseType == typeof(Enum))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        protected Type[] GetTupleArgumentsList(Type type)
-        {
-            var typeArgs = type.GetGenericArguments();
-
-            if (IsTuple(type) && typeArgs.Length == 8)
-            {
-                return typeArgs.Take(7).Concat(GetTupleArgumentsList(typeArgs[7])).ToArray();
-            }
-            else
-            {
-                return typeArgs;
-            }
-        }
-
-        ExtractionPlanNode BindPropertyPlan(RegexCaptureGroupNode tree, Type type, string name)
-        {
-            if (IsNullable(type))
-            {
-                type = type.GetGenericArguments().Single();
-            }
-
-            var property = type.GetProperty(name);
+            // TODO: Figure out how to move this into ExtractionPlanTypeWrapper, and do some caching
+            var property = type.Type.GetProperty(name);
 
             if (property is null)
                 throw new ArgumentException($"Could not find property for named capture group '{name}'.");
 
-            type = property.PropertyType;
+            type = ExtractionPlanTypeWrapper.Wrap(property.PropertyType);
 
             return AssignTypesToTree(tree, type);
         }
 
-        ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, Type type, int paramNum, int paramCount)
+        ExtractionPlanNode BindConstructorPlan(RegexCaptureGroupNode tree, ExtractionPlanTypeWrapper type, int paramNum, int paramCount)
         {
-            if (IsNullable(type))
-            {
-                type = type.GetGenericArguments().Single();
-            }
-
-            var constructors = type.GetConstructors()
+            var constructors = type.Constructors
                        .Where(cons => cons.GetParameters().Length == paramCount);
 
-            if (IsInitializableCollection(type))
+            if (type.IsInitializableCollection)
             {
                 try
                 {
-                    type = type.GetGenericArguments()[paramNum];
+                    type = ExtractionPlanTypeWrapper.Wrap(type.GenericArguments?[paramNum]);
                 }
                 catch (IndexOutOfRangeException)
                 {
-                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for collection {type.FullName}");
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for collection {type.Type.FullName}");
                 }
             }
-            else if (IsTuple(type))
+            else if (type.IsTuple)
             {
                 try
                 {
-                    type = type.GetGenericArguments()[paramNum];
+                    type = ExtractionPlanTypeWrapper.Wrap(type.GenericArguments?[paramNum]);
                 }
                 catch (IndexOutOfRangeException)
                 {
-                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for tuple {type.FullName}");
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for tuple {type.Type.FullName}");
                 }
             }
             else if (constructors?.Count() == 1)
@@ -185,20 +95,20 @@ namespace RegExtract
 
                 try
                 {
-                    type = constructor.GetParameters()[paramNum].ParameterType;
+                    type = ExtractionPlanTypeWrapper.Wrap(constructor.GetParameters()[paramNum].ParameterType);
                 }
                 catch (IndexOutOfRangeException)
                 {
-                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for constructor {type.FullName}");
+                    throw new ArgumentException($"Capture group '{tree.name}' represents too many parameters for constructor {type.Type.FullName}");
                 }
             }
 
             return AssignTypesToTree(tree, type);
         }
 
-        ExtractionPlanNode BindTupleConstructorPlan(string name, IEnumerable<RegexCaptureGroupNode> nodes, Type tupleType)
+        ExtractionPlanNode BindTupleConstructorPlan(string name, IEnumerable<RegexCaptureGroupNode> nodes, ExtractionPlanTypeWrapper tupleType)
         {
-            var typeArgs = IsNullable(tupleType) ? tupleType.GetGenericArguments().Single().GetGenericArguments() : tupleType.GetGenericArguments();
+            var typeArgs = tupleType.GenericArguments;
 
             List<ExtractionPlanNode> groups = new();
 
@@ -210,21 +120,19 @@ namespace RegExtract
                 }
                 else
                 {
-                    groups.Add(BindTupleConstructorPlan(name, nodes.Skip(7), type));
+                    groups.Add(BindTupleConstructorPlan(name, nodes.Skip(7), ExtractionPlanTypeWrapper.Wrap(type)));
                 }
             }
 
             return ExtractionPlanNode.Bind(name, tupleType, groups.ToArray(), new ExtractionPlanNode[0]);
         }
 
-        private ExtractionPlanNode AssignTypesToTree(RegexCaptureGroupNode tree, Type type)
+        private ExtractionPlanNode AssignTypesToTree(RegexCaptureGroupNode tree, ExtractionPlanTypeWrapper type)
         {
-            var unwrappedType = IsNullable(type) ? type.GetGenericArguments().Single() : type;
-
             List<ExtractionPlanNode> groups = new();
             List<ExtractionPlanNode> namedgroups = new();
 
-            if (IsDirectlyConstructable(type))
+            if (type.IsDirectlyConstructable)
             {
                 // We're at a leaf in the type hierarchy, and all we need is a string.
                 // If there's an inner capture group, use it to narrow the match.
@@ -235,20 +143,20 @@ namespace RegExtract
 
                 return ExtractionPlanNode.BindLeaf(tree.name, type, groups.ToArray(), namedgroups.ToArray());
             }
-            else if (IsTuple(unwrappedType))
+            else if (type.IsTuple)
             {
                 return BindTupleConstructorPlan(tree.name, tree.children, type);
             }
-            else if (IsInitializableCollection(type))
+            else if (type.IsInitializableCollection)
             {
-                var typeParams = type.GetGenericArguments();
+                var typeParams = type.GenericArguments;
 
                 if (tree.name == "0")
                 {
                     return AssignTypesToTree(tree.children.Single(), type);
                 }
 
-                if (typeParams.Length < 2 && !IsInitializableCollection(typeParams.FirstOrDefault()))
+                if (typeParams.Length < 2 && !(typeParams.Length > 0 && ExtractionPlanTypeWrapper.Wrap(typeParams.First()).IsInitializableCollection))
                 {
                     return ExtractionPlanNode.Bind(tree.name, type, new[] { BindConstructorPlan(tree, type, 0, 1) }, new ExtractionPlanNode[0]);
                 }

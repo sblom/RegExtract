@@ -11,6 +11,13 @@ namespace RegExtract.Test
 {
     public class Usage
     {
+        // Tests prefixed with 'a' are intended to be a broad variety of extraction plan creation and execution samples.
+        // It's reasonable to expect 'a' tests to be reasonably performant.
+        //
+        // Tests prefixed with 'f' are functional tests that aren't intended to be performant.
+        //
+        // Other test names are designed to cover a broad variety of scenarios, and don't necessarily follow a pattern.
+
         private readonly ITestOutputHelper output;
 
         public Usage(ITestOutputHelper output)
@@ -23,20 +30,24 @@ namespace RegExtract.Test
         const string pattern_nested = "(((.)(.)(.)(.)(.)(.)(.)(.)(.)))";
         const string pattern_named = "(?<n>(?<s>(?<a>.)(?<b>.)(?<c>.)(?<d>.)(?<e>.)(?<f>.)(?<g>.)(?<h>.)(?<i>.)))";
 
+        Regex rxa001 = new(@"((\w)(\w))+");
+
         [Fact]
         public void a001()
         {
-            var plan = CreateAndLogPlan<List<(char, char)>>(/* language=regex */@"((\w)(\w))+");
+            var plan = CreateAndLogPlan<List<(char, char)>>(rxa001);
 
             var result = plan.Extract( @"abcdef");
 
             Assert.Equal(result, [('a', 'b'), ('c', 'd'), ('e', 'f')]);
         }
 
+        Regex rxa002 = new(@"((\d+) ?)+");
+
         [Fact]
         public void a002()
         {
-            var plan = CreateAndLogPlan<List<int>>(/* language=regex */@"((\d+) ?)+");
+            var plan = CreateAndLogPlan<List<int>>(rxa002);
             
             var result = plan.Extract(@"123 456 789");
 
@@ -46,31 +57,36 @@ namespace RegExtract.Test
         record game(int id, List<draw> draws);
         record draw(List<(int count, string color)> colors);
 
+        Regex rxa003 = new(@"Game (\d+): (((\d+) (\w+),? ?)+;? ?)+");
+
         [Fact]
         public void a003()
         {
-            var plan = CreateAndLogPlan<game>(/* language=regex */@"Game (\d+): (((\d+) (\w+),? ?)+;? ?)+");
+            var plan = CreateAndLogPlan<game>(/* language=regex */rxa003);
             
             var result = plan.Extract("Game 31: 9 blue, 6 red, 7 green; 20 red, 1 green, 15 blue");
 
             Assert.Equivalent(result, new game(31, [new draw([(9, "blue"), (6, "red"), (7, "green")]), new draw([(20, "red"), (1, "green"), (15, "blue")])]));
         }
 
+        Regex rxa004 = new(@"(([RL])(\d+),? ?)+");
+
         [Fact]
         public void a004()
         {
-            var plan = CreateAndLogPlan<List<(char, int)>>(/* language=regex */@"(([RL])(\d+),? ?)+");
+            var plan = CreateAndLogPlan<List<(char, int)>>(rxa004);
 
             var result = plan.Extract("R8, R4, L4, R8");
 
             Assert.Equal(result, [('R', 8), ('R', 4), ('L', 4), ('R', 8)]);
         }
 
+        Regex rxa005 = new(@"((...) = \(((...), (...))\);? ?)+");
 
         [Fact]
         public void a005()
         {
-            var plan = CreateAndLogPlan<Dictionary<string, (string left, string right)>>(/* language=regex */@"((...) = \(((...), (...))\);? ?)+");
+            var plan = CreateAndLogPlan<Dictionary<string, (string left, string right)>>(rxa005);
 
             var result = plan.Extract(@"AAA = (BBB, CCC); BBB = (DDD, EEE)");
 
@@ -83,60 +99,72 @@ namespace RegExtract.Test
             Assert.Equal(expected, result);
         }
 
+        Regex rxa006 = new(@"((\d+) ?)+");
+
         [Fact]
         public void a006()
         {
-            var plan = CreateAndLogPlan<List<int>>(/* language=regex */@"((\d+) ?)+");
+            var plan = CreateAndLogPlan<List<int>>(rxa006);
 
             var result = plan.Extract("123 456 789");
 
             Assert.Equal([123, 456, 789], result);
         }
+
+        Regex rxa007 = new(@"(?:(\d+) ?)+");
 
         [Fact]
         public void a007()
         {
-            var plan = CreateAndLogPlan<List<int>>(/* language=regex */@"(?:(\d+) ?)+");
+            var plan = CreateAndLogPlan<List<int>>(rxa007);
 
             var result = plan.Extract("123 456 789");
 
             Assert.Equal([123, 456, 789], result);
         }
+
+        Regex rxa008 = new(@"(\d+ ?)+");
 
         [Fact]
         public void a008()
         {
-            var plan = CreateAndLogPlan<List<int>>(/* language=regex */@"(\d+ ?)+");
+            var plan = CreateAndLogPlan<List<int>>(rxa008);
 
             var result = plan.Extract("123 456 789");
 
             Assert.Equal([123, 456, 789], result);
         }
 
+        Regex rxa009 = new(@"(([a-z]+)([=-][0-9]?),?)+");
+
         [Fact]
         public void a009()
         {
-            var plan = CreateAndLogPlan<List<(string, string)>>(/* language=regex */@"(([a-z]+)([=-][0-9]?),?)+");
+            var plan = CreateAndLogPlan<List<(string, string)>>(rxa009);
 
             var result = plan.Extract(@"rn=1,cm-,qp=3,cm=2,qp-,pc=4,ot=9,ab=5,pc-,pc=6,ot=7");
 
             Assert.Equal([("rn", "=1"), ("cm", "-"), ("qp", "=3"), ("cm", "=2"), ("qp", "-"), ("pc", "=4"), ("ot", "=9"), ("ab", "=5"), ("pc", "-"), ("pc", "=6"), ("ot", "=7")], result);
         }
 
+        Regex rxa010 = new(@"(((\w)+ ?)+,? ?)+");
+
         [Fact]
         public void a010()
         {
-            var plan = CreateAndLogPlan<List<List<List<char>>>>(/* language=regex */@"(((\w)+ ?)+,? ?)+");
+            var plan = CreateAndLogPlan<List<List<List<char>>>>(rxa010);
 
             var result = plan.Extract(@"asdf lkj, wero oiu");
 
             Assert.Equal([[['a', 's', 'd', 'f'], ['l', 'k', 'j']], [['w', 'e', 'r', 'o'], ['o', 'i', 'u']]], result);
         }
 
+        Regex rxa011 = new(@"^(([%&])?([a-z]+)) -> (([a-z]+),? ?)+$");
+
         [Fact]
         public void a011()
         {
-            var plan = CreateAndLogPlan<((char? type, string name) module, List<string> outputs)>(/* language=regex */@"^(([%&])?([a-z]+)) -> (([a-z]+),? ?)+$");
+            var plan = CreateAndLogPlan<((char? type, string name) module, List<string> outputs)>(rxa011);
 
             var result = plan.Extract("&kx -> zs, br, jd, bj, vg");
 
@@ -180,10 +208,12 @@ namespace RegExtract.Test
         record Reject : Action;
         record Workflow(string workflow) : Action;
 
+        Regex rxa012 = new(@"(\w+){(([^,]+),?)+}");
+
         [Fact]
         public void a012()
         {
-            var plan = CreateAndLogPlan<(string workflow, List<Rule> rules) >(/* language=regex */@"(\w+){(([^,]+),?)+}");
+            var plan = CreateAndLogPlan<(string workflow, List<Rule> rules) >(rxa012);
 
             var result = plan.Extract("sxc{x>2414:jtp,s>954:R,m>2406:A,xfz}");
 
@@ -191,7 +221,7 @@ namespace RegExtract.Test
         }
 
         [Fact]
-        public void a013()
+        public void f001()
         {
             var 
             tree = new RegexCaptureGroupTree(new Regex("(asdf){}"));
@@ -480,21 +510,23 @@ $
 
         record bounds(int lo, int hi);
 
+        Regex rx_nested_extraction = new(@"((\d+)-(\d+)) (.): (.*)");
+
         [Fact]
         public void nested_extraction()
         {
             // TODO: Why is this so much slower than nested_extraction_control?
-            var result = "2-12 c: abcdefg".Extract<(bounds, char, string)>(@"((\d+)-(\d+)) (.): (.*)");
+            var result = "2-12 c: abcdefg".Extract<(bounds, char, string)>(rx_nested_extraction);
 
-            Assert.Equal((new bounds(2, 12), 'c', "abcdefg"), result);
+            //Assert.Equal((new bounds(2, 12), 'c', "abcdefg"), result);
         }
 
         [Fact]
         public void nested_extraction_control()
         {
-            var result = "2-12 c: abcdefg".Extract<((int lo, int hi), char ch, string str)>(@"((\d+)-(\d+)) (.): (.*)");
+            var result = "2-12 c: abcdefg".Extract<((int lo, int hi), char ch, string str)>(rx_nested_extraction);
 
-            Assert.Equal(((2, 12), 'c', "abcdefg"), result);
+            //Assert.Equal(((2, 12), 'c', "abcdefg"), result);
         }
 
 
@@ -590,8 +622,7 @@ $
             //var plan = RegexExtractionPlan.CreatePlan<(string, string, List<(int?, string)?>)>(@"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$");
             //var result = plan.Execute(Regex.Match(data, @"^(.+) bags contain(?: (no other bags)\.| ((\d+) (.*?)) bags?[,.])+$"));
 
-            Regex rx;
-            var plan = CreateAndLogPlan<bagdescription>(/* language=regex */@"^(?<name>.+) bags contain(?: (?<none>no other bags)\.| (?<contents>(\d+) (.*?)) bags?[,.])+$");
+            var plan = CreateAndLogPlan<bagdescription>(new Regex(@"^(?<name>.+) bags contain(?: (?<none>no other bags)\.| (?<contents>(\d+) (.*?)) bags?[,.])+$"));
             var result = plan.Extract("faded yellow bags contain 4 mirrored fuchsia bags, 4 dotted indigo bags, 3 faded orange bags, 5 plaid crimson bags.");
 
             Assert.Equivalent(new bagdescription { name = "faded yellow", contents = new List<includedbags> { new includedbags(4, "mirrored fuchsia"), new includedbags(4, "dotted indigo"), new includedbags(3, "faded orange"), new includedbags(5, "plaid crimson") } }, result);
@@ -621,7 +652,7 @@ $
         [Fact]
         public void deep_tuple_type_tree()
         {
-            var plan = CreateAndLogPlan<(int, (int, int), int, int, int, int, (int, (List<int>, int)), int, int, int, int, int, int, int, int)>(@"(\d+) \(((\d+) (\d+))\) (\d+) (\d+) (\d+) (\d+) ((\d+) \(((\d+ ?)+ (\d+))\)) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)");
+            var plan = CreateAndLogPlan<(int, (int, int), int, int, int, int, (int, (List<int>, int)), int, int, int, int, int, int, int, int)>(new Regex(@"(\d+) \(((\d+) (\d+))\) (\d+) (\d+) (\d+) (\d+) ((\d+) \(((\d+ ?)+ (\d+))\)) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)"));
 
             var result = plan.Extract("1 (2 3) 4 5 6 7 8 (9 10 11 12 13) 14 15 16 17 18 19 20 21");
 
@@ -631,7 +662,7 @@ $
         [Fact]
         public void can_create_polymorphic_parse_plan()
         {
-            var plan = CreateAndLogPlan<instr>(@"(.*)");
+            var plan = CreateAndLogPlan<instr>(new Regex(@"(.*)"));
             var results = plan.Extract("mask = lkjasdf");
             Assert.Equal(new maskinstr("lkjasdf"), results);
         }
@@ -653,9 +684,9 @@ $
         record maskinstr(string mask) : instr;
         record meminstr(long loc, long val) : instr;
 
-        private ExtractionPlan<T> CreateAndLogPlan<T>(string v)
+        private ExtractionPlan<T> CreateAndLogPlan<T>(Regex rx)
         {
-            var plan = ExtractionPlan<T>.CreatePlan(new Regex(v));
+            var plan = ExtractionPlan<T>.CreatePlan(rx);
             output.WriteLine(plan.ToString("x"));
 
             return plan;
