@@ -27,13 +27,13 @@ namespace RegExtract.ExtractionPlanNodeTypes
             var vals = Activator.CreateInstance(type.Type);
             var addMethod = type.Type.GetMethod("Add");
 
-            object?[] itemVals = new object[genericArgs.Length];
+            object?[] itemVals = new object[genericArgs?.Length ?? 0];
 
             var rangeArray = constructorParams.Select(c => Ranges(match, groupName, captureStart, captureLength, cache).GetEnumerator()).ToArray();
 
             do
             {
-                for (int i = 0; i < genericArgs.Length; i++)
+                for (int i = 0; i < genericArgs?.Length; i++)
                 {
                     if (rangeArray[i].MoveNext())
                     {

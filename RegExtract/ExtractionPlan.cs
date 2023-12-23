@@ -116,7 +116,7 @@ namespace RegExtract
             {
                 if (idx < 7)
                 {
-                    groups.Add(BindConstructorPlan(node, tupleType, idx, typeArgs.Length));
+                    groups.Add(BindConstructorPlan(node, tupleType, idx, typeArgs?.Length ?? 0));
                 }
                 else
                 {
@@ -156,7 +156,7 @@ namespace RegExtract
                     return AssignTypesToTree(tree.children.Single(), type);
                 }
 
-                if (typeParams.Length < 2 && !(typeParams.Length > 0 && ExtractionPlanTypeWrapper.Wrap(typeParams.First()).IsInitializableCollection))
+                if ((typeParams?.Length ?? 0) < 2 && !((typeParams?.Length ?? 0) > 0 && ExtractionPlanTypeWrapper.Wrap(typeParams.First()).IsInitializableCollection))
                 {
                     return ExtractionPlanNode.Bind(tree.name, type, new[] { BindConstructorPlan(tree, type, 0, 1) }, new ExtractionPlanNode[0]);
                 }

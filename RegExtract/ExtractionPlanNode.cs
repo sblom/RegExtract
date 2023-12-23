@@ -15,7 +15,7 @@ namespace RegExtract
         {
             StringBuilder builder = new();
 
-            builder.Append(this.GetType().Name.Replace("Node","")).Append("<").Append(string.Join(",",FriendlyTypeName(type))).Append(">[").Append(int.TryParse(groupName, out var _) ? groupName : "\"" + groupName + "\"").Append("] (");
+            builder.Append(this.GetType().Name.Replace("Node","")).Append("<").Append(string.Join(",",FriendlyTypeName(type.Type))).Append(">[").Append(int.TryParse(groupName, out var _) ? groupName : '"' + groupName + '"').Append("] (");
             if (constructorParams.Any())
             {
                 builder.Append("\n");
@@ -36,9 +36,9 @@ namespace RegExtract
             return builder.ToString();
         }
 
-        string FriendlyTypeName(ExtractionPlanTypeWrapper type)
+        string FriendlyTypeName(Type type)
         {
-            var keyword = type.Type.Name switch
+            var keyword = type.Name switch
             {
                 "Byte" => "byte",
                 "SByte" => "sbyte",
@@ -58,18 +58,18 @@ namespace RegExtract
 
             if (keyword is not null) return keyword;
 
-            if (type.IsNullable) return FriendlyTypeName(type.NonNullableType) + "?";
+            if (Nullable.GetUnderlyingType(type) is Type nonNullableType) return FriendlyTypeName(nonNullableType) + "?";
 
-            var args = type.GenericArguments;
+            var args = type.GetGenericArguments();
 
-            if (type.IsTuple) return "(" + String.Join(",", args.Select(arg => ExtractionPlanTypeWrapper.Wrap(arg))) + ")";
+            if (type.FullName.StartsWith(VALUETUPLE_TYPENAME)) return "(" + String.Join(",", args.Select(arg => FriendlyTypeName(arg))) + ")";
 
             if (args.Any())
             {
-                return type.Type.Name.Split('`')[0] + "<" + String.Join(",", args.Select(arg => ExtractionPlanTypeWrapper.Wrap(arg))) + ">";
+                return type.Name.Split('`')[0] + "<" + String.Join(",", args.Select(arg => FriendlyTypeName(arg))) + ">";
             }
 
-            else return type.Type.Name;
+            else return type.Name;
         }
 
         internal static ExtractionPlanNode Bind(string groupName, ExtractionPlanTypeWrapper type, ExtractionPlanNode[] constructorParams, ExtractionPlanNode[] propertySetters)

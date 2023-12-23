@@ -12,10 +12,11 @@ namespace RegExtract
     {
         private static Dictionary<Type, ExtractionPlanTypeWrapper> _typeWrappers = new();
 
-        public static ExtractionPlanTypeWrapper Wrap(Type type)
+        public static ExtractionPlanTypeWrapper Wrap(Type? type)
         {
-            if (_typeWrappers.ContainsKey(type))
-                return _typeWrappers[type];
+            type ??= typeof(void);
+            if (_typeWrappers.TryGetValue(type, out var wrap))
+                return wrap;
             else
                 return (_typeWrappers[type] = new ExtractionPlanTypeWrapper(type));
         }
