@@ -132,11 +132,11 @@ namespace RegExtract
             List<ExtractionPlanNode> groups = new();
             List<ExtractionPlanNode> namedgroups = new();
 
-            if (type.IsDirectlyConstructable)
+            if (tree.children is [] or [{children: []}] && type.IsDirectlyConstructable)
             {
                 // We're at a leaf in the type hierarchy, and all we need is a string.
                 // If there's an inner capture group, use it to narrow the match.
-                if (tree.children.Count() == 1)
+                if (tree.children.Length == 1)
                 {
                     tree = tree.children.Single();
                 }

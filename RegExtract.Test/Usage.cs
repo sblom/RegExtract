@@ -220,6 +220,25 @@ namespace RegExtract.Test
             Assert.Equivalent(("sxc", new List<Rule> { new Conditional(new Condition('x', '>', 2414), new Workflow("jtp")), new Conditional(new Condition('s', '>', 954), new Reject()), new Conditional(new Condition('m', '>', 2406), new Accept()), new Absolute(new Workflow("xfz")) }), result);
         }
 
+        record triple(int a, int b, int c) {
+            public static triple Parse(string str)
+            {
+                return new triple(0,0,0);
+            }
+        }
+
+        private Regex rxa013 = new(@"(\d+) (\d+) (\d+)");
+
+        [Fact]
+        public void a013()
+        {
+            var plan = CreateAndLogPlan<triple>(rxa013);
+
+            var result = plan.Extract("123 456 789");
+
+            Assert.Equal(new triple(123,456,789), result);
+        }
+
         [Fact]
         public void f001()
         {
