@@ -83,4 +83,10 @@ See more docs at project page: https://github.com/sblom/RegExtract
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' != 'net40'">
+    <ProjectReference Include="..\RegExtract.SourceGenerator\RegExtract.SourceGenerator.csproj" 
+                      OutputItemType="Analyzer" 
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

@@ -25,4 +25,10 @@
     <ProjectReference Include="..\RegExtract\RegExtract.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' != 'net452'">
+    <ProjectReference Include="..\RegExtract.SourceGenerator\RegExtract.SourceGenerator.csproj" 
+                      OutputItemType="Analyzer" 
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

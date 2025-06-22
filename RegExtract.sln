@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegExtract", "RegExtract\Re
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RegExtract.Test", "RegExtract.Test\RegExtract.Test.csproj", "{836F68E6-27F6-417F-B216-3B48BBE34862}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegExtract.SourceGenerator", "RegExtract.SourceGenerator\RegExtract.SourceGenerator.csproj", "{1B72EB5D-AF1E-4D51-ADEA-6C59DEA48276}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{836F68E6-27F6-417F-B216-3B48BBE34862}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{836F68E6-27F6-417F-B216-3B48BBE34862}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{836F68E6-27F6-417F-B216-3B48BBE34862}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B72EB5D-AF1E-4D51-ADEA-6C59DEA48276}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B72EB5D-AF1E-4D51-ADEA-6C59DEA48276}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B72EB5D-AF1E-4D51-ADEA-6C59DEA48276}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B72EB5D-AF1E-4D51-ADEA-6C59DEA48276}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
