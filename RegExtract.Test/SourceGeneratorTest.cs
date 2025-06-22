@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.RegularExpressions;
 using Xunit;
 using Xunit.Abstractions;
@@ -38,10 +39,26 @@ namespace RegExtract.Test
         [Fact]
         public void CheckIfGeneratedCodeExists()
         {
-            // This test will try to access the generated code directly
-            // If the source generator is working, we should be able to access TestRecordExtractionPlan
+            // First check if the simple test class exists to verify the source generator is running
+            var simpleTestType = typeof(TestRecord).Assembly.GetType("RegExtract.Generated.SourceGeneratorTest");
             
-            // We'll use reflection to check if the generated type exists
+            if (simpleTestType != null)
+            {
+                output.WriteLine("Source generator is working - found SourceGeneratorTest class");
+                
+                var getMessageMethod = simpleTestType.GetMethod("GetMessage");
+                if (getMessageMethod != null)
+                {
+                    var message = getMessageMethod.Invoke(null, null);
+                    output.WriteLine($"Message from generated code: {message}");
+                }
+            }
+            else
+            {
+                output.WriteLine("SourceGeneratorTest class not found - source generator may not be running");
+            }
+            
+            // Now check if the TestRecord extraction plan exists
             var generatedType = typeof(TestRecord).Assembly.GetType("RegExtract.Generated.TestRecordExtractionPlan");
             
             if (generatedType != null)
@@ -60,9 +77,18 @@ namespace RegExtract.Test
             }
             else
             {
-                output.WriteLine("Generated type not found - source generator may not be working yet");
-                // For now, we'll just mark this as inconclusive rather than failing
-                // Once the source generator is fully working, we can make this a proper assertion
+                output.WriteLine("Generated TestRecordExtractionPlan not found - may need debugging");
+                
+                // List all types in the assembly that might be generated
+                var generatedTypes = typeof(TestRecord).Assembly.GetTypes()
+                    .Where(t => t.Namespace == "RegExtract.Generated")
+                    .ToArray();
+                    
+                output.WriteLine($"Found {generatedTypes.Length} types in RegExtract.Generated namespace:");
+                foreach (var type in generatedTypes)
+                {
+                    output.WriteLine($"  - {type.FullName}");
+                }
             }
         }
     }
