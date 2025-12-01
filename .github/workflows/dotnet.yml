@@ -1,5 +1,10 @@
 name: dotnet
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
 on:
   push:
     branches: [ main ]
@@ -11,13 +16,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '3.1.x'
       - uses: gittools/actions/gitversion/setup@v0.9.7
@@ -41,7 +46,7 @@ jobs:
             -p:PackageVersion="${{ env.GitVersion_FullSemVer }}" \
             RegExtract/RegExtract.csproj \
             --output ${{ github.workspace }}/nugets/
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: nugets
           path: nugets
@@ -53,12 +58,12 @@ jobs:
 
     steps:
       - name: download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: nugets
 
       - name: setup dotnet
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
           source-url: https://nuget.pkg.github.com/sblom/index.json
@@ -74,15 +79,15 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           name: nugets
 
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
           source-url: https://api.nuget.org/v3/index.json
         env:
-          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_API_KEY }}
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate --api-key ${{ secrets.NUGET_API_KEY }}
+      - run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate
