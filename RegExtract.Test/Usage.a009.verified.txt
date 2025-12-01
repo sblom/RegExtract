@@ -1,0 +1,10 @@
+CollectionInitializer<List<(string,string)>>[1] (
+	ConstructTuple<(string,string)>[1] (
+		StringCast<string>[2] (),
+		StringCast<string>[3] ()
+	)
+)
+
+↓--------------------------↓₀
+(↓-------↓↓-----------↓,?)+₁ 
+ ([a-z]+)₂([=-][0-9]?)₃      

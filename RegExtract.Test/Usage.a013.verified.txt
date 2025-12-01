@@ -1,0 +1,8 @@
+Constructor<triple>[0] (
+	StaticParseMethod<int>[1] (),
+	StaticParseMethod<int>[2] (),
+	StaticParseMethod<int>[3] ()
+)
+
+↓----↓ ↓----↓ ↓----↓₀
+(\d+)₁ (\d+)₂ (\d+)₃ 

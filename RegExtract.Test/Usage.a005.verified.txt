@@ -1,0 +1,12 @@
+CollectionInitializer<Dictionary<string,(string,string)>>[1] (
+	StringCast<string>[2] (),
+	ConstructTuple<(string,string)>[3] (
+		StringCast<string>[4] (),
+		StringCast<string>[5] ()
+	)
+)
+
+↓------------------------------------↓₀
+(↓----↓ = \(↓---------------↓\);? ?)+₁ 
+ (...)₂     (↓----↓, ↓----↓)₃          
+             (...)₄  (...)₅            

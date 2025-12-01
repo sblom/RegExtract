@@ -1,0 +1,18 @@
+Constructor<game>[0] (
+	StaticParseMethod<int>[1] (),
+	CollectionInitializer<List<draw>>[2] (
+		Constructor<draw>[2] (
+			CollectionInitializer<List<(int,string)>>[3] (
+				ConstructTuple<(int,string)>[3] (
+					StaticParseMethod<int>[4] (),
+					StringCast<string>[5] ()
+				)
+			)
+		)
+	)
+)
+
+Game ↓----↓: ↓---------------------------↓₀
+     (\d+)₁  (↓-------------------↓;? ?)+₂ 
+              (↓----↓ ↓----↓,? ?)+₃        
+               (\d+)₄ (\w+)₅               

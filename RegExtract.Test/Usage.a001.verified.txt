@@ -1,0 +1,10 @@
+CollectionInitializer<List<(char,char)>>[1] (
+	ConstructTuple<(char,char)>[1] (
+		StaticParseMethod<char>[2] (),
+		StaticParseMethod<char>[3] ()
+	)
+)
+
+↓------------↓₀
+(↓---↓↓---↓)+₁ 
+ (\w)₂(\w)₃    

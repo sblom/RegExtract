@@ -1,0 +1,13 @@
+ConstructTuple<((char?,string),List<string>)>[0] (
+	ConstructTuple<(char?,string)>[1] (
+		StaticParseMethod<char?>[2] (),
+		StringCast<string>[3] ()
+	),
+	CollectionInitializer<List<string>>[4] (
+		StringCast<string>[5] ()
+	)
+)
+
+^↓------------------↓ -> ↓---------------↓$₀
+ (↓------↓↓-------↓)₁    (↓-------↓,? ?)+₄  
+  ([%&])?₂([a-z]+)₃       ([a-z]+)₅         

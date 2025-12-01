@@ -1,5 +1,10 @@
 name: dotnet
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
 on:
   push:
     branches: [ main ]
@@ -11,13 +16,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - uses: actions/setup-dotnet@v1
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '3.1.x'
       - uses: gittools/actions/gitversion/setup@v0.9.7
@@ -30,7 +35,14 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
       - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            # Skip net462 on Linux (Mono/OpenSSL compatibility issues)
+            dotnet test --configuration Release --no-build --verbosity normal --framework '!net462'
+          else
+            dotnet test --configuration Release --no-build --verbosity normal
+          fi
+        shell: bash
       - run: |
           dotnet pack \
             --include-source \
@@ -41,7 +53,7 @@ jobs:
             -p:PackageVersion="${{ env.GitVersion_FullSemVer }}" \
             RegExtract/RegExtract.csproj \
             --output ${{ github.workspace }}/nugets/
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: nugets
           path: nugets
@@ -53,12 +65,12 @@ jobs:
 
     steps:
       - name: download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: nugets
 
       - name: setup dotnet
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
           source-url: https://nuget.pkg.github.com/sblom/index.json
@@ -74,15 +86,17 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           name: nugets
 
-      - uses: actions/setup-dotnet@v1
+      # Get a short-lived NuGet API key
+      - name: NuGet login (OIDC → temp API key)
+        uses: NuGet/login@v1
+        id: login
         with:
-          dotnet-version: '8.0.x'
-          source-url: https://api.nuget.org/v3/index.json
-        env:
-          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_API_KEY }}
-
-      - run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate --api-key ${{ secrets.NUGET_API_KEY }}
+          user: ${{secrets.NUGET_USER}}
+    
+      # Push the package
+      - name: NuGet push
+        run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
