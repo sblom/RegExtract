@@ -90,11 +90,13 @@ jobs:
         with:
           name: nugets
 
-      - uses: actions/setup-dotnet@v4
+      # Get a short-lived NuGet API key
+      - name: NuGet login (OIDC → temp API key)
+        uses: NuGet/login@v1
+        id: login
         with:
-          dotnet-version: '8.0.x'
-          source-url: https://api.nuget.org/v3/index.json
-        env:
-          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate
+          user: ${{secrets.NUGET_USER}}
+    
+      # Push the package
+      - name: NuGet push
+        run: dotnet nuget push *.nupkg *.snupkg --skip-duplicate --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
