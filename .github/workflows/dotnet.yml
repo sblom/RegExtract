@@ -36,8 +36,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y mono-devel
-          mono --version
+          # Install mono and common OpenSSL packages. Some test hosts need libssl1.1, others libssl3.
+          sudo apt-get install -y --no-install-recommends mono-devel libssl-dev libssl3 || true
+          # Try installing libssl1.1 if available (older runners/packages may require it). Ignore errors.
+          sudo apt-get install -y --no-install-recommends libssl1.1 || true
+          # Verify installation
+          mono --version || true
+          ldconfig -p | grep libssl || true
       - name: Build
         run: dotnet build --configuration Release --no-restore
       - name: Test
