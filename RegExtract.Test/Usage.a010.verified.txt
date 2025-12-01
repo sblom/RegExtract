@@ -1,0 +1,12 @@
+CollectionInitializer<List<List<List<char>>>>[1] (
+	CollectionInitializer<List<List<char>>>[2] (
+		CollectionInitializer<List<char>>[3] (
+			StaticParseMethod<char>[3] ()
+		)
+	)
+)
+
+↓------------------↓₀
+(↓----------↓,? ?)+₁ 
+ (↓----↓ ?)+₂        
+  (\w)+₃             

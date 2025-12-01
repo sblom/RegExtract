@@ -1,0 +1,7 @@
+CollectionInitializer<List<int>>[1] (
+	StaticParseMethod<int>[2] ()
+)
+
+↓----------↓₀
+(↓----↓ ?)+₁ 
+ (\d+)₂      

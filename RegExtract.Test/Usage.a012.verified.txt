@@ -1,0 +1,10 @@
+ConstructTuple<(string,List<Rule>)>[0] (
+	StringCast<string>[1] (),
+	CollectionInitializer<List<Rule>>[2] (
+		StaticParseMethod<Rule>[3] ()
+	)
+)
+
+↓----↓{↓------------↓}₀
+(\w+)₁ (↓------↓,?)+₂  
+        ([^,]+)₃       
