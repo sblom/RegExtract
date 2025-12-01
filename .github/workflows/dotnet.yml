@@ -32,6 +32,12 @@ jobs:
         uses: gittools/actions/gitversion/execute@v0.9.7
       - name: Restore dependencies
         run: dotnet restore
+      - name: Install Mono (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mono-devel
+          mono --version
       - name: Build
         run: dotnet build --configuration Release --no-restore
       - name: Test
